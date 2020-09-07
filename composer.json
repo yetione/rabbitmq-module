@@ -1,0 +1,26 @@
+{
+    "name": "yetione/rabbitmq-module",
+    "description": "RabbitMQ connector module",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "yeti",
+            "email": "jub45@yandex.ru"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "yetione/dtoable": "dev-master",
+        "zendframework/zend-json": "^3.1@dev",
+        "php-amqplib/php-amqplib": "^2.12@dev"
+    },
+    "autoload": {
+        "psr-4": { "Yetione\\RabbitMQ\\": "src/"}
+    },
+    "extra": {
+        "branch-alias": {
+            "master": "1-dev"
+        }
+    }
+}
