@@ -17,47 +17,25 @@ use Yetione\RabbitMQ\DTO\Queue;
 use Yetione\RabbitMQ\DTO\QueueBinding;
 use Yetione\RabbitMQ\Exception\ConnectionClosedException;
 
-class ConnectionWrapper
+class ConnectionWrapper implements ConnectionInterface
 {
-    /**
-     * @var AbstractConnection
-     */
-    protected $connection;
+    protected AbstractConnection $connection;
 
-    /**
-     * @var AMQPChannel
-     */
-    protected $channel;
+    protected ?AMQPChannel $channel;
 
-    /**
-     * @var array
-     */
-    protected $declaredExchanges = [];
+    protected array $declaredExchanges = [];
 
-    /**
-     * @var array
-     */
-    protected $declaredQueues = [];
+    protected array $declaredQueues = [];
 
-    /**
-     * @var array
-     */
-    protected $declaredQueuesBinds = [];
+    protected array $declaredQueuesBinds = [];
 
-    /**
-     * @var array
-     */
-    protected $declaredExchangeBindings = [];
+    protected array $declaredExchangeBindings = [];
 
     public function __construct(AbstractConnection $connection)
     {
         $this->setConnection($connection);
     }
 
-    /**
-     * @param bool $createNew
-     * @return AMQPChannel
-     */
     public function getChannel(bool $createNew=false): AMQPChannel
     {
         if (null === $this->channel || $createNew) {

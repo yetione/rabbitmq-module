@@ -14,6 +14,7 @@ use PhpAmqpLib\Exception\AMQPOutOfBoundsException;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Message\AMQPMessage;
+use Yetione\RabbitMQ\Connection\ConnectionInterface;
 use Yetione\RabbitMQ\Connection\ConnectionWrapper;
 use Yetione\RabbitMQ\Constant\Consumer;
 use Yetione\RabbitMQ\DTO\Binding;
@@ -44,100 +45,44 @@ use Zend\Json\Json;
  */
 abstract class AbstractConsumer
 {
-    /**
-     * @var ConnectionWrapper
-     */
-    protected $connectionWrapper;
 
-    /**
-     * @var string
-     */
-    protected $memoryLimit = '6144M';
+    protected ConnectionInterface $connectionWrapper;
 
-    /**
-     * @var int
-     */
-    protected $maxExecutionTime = 0;
+    protected string $memoryLimit = '6144M';
 
-    /**
-     * @var string
-     */
-    protected $connectionOptionsName = 'consumer';
+    protected int $maxExecutionTime = 0;
 
-    /**
-     * @var string
-     */
-    protected $connectionName = 'default_consumer';
+    protected string $connectionOptionsName = 'consumer';
 
-    /**
-     * @var int
-     */
-    protected $maxMessages = 0;
+    protected string $connectionName = 'default_consumer';
 
-    /**
-     * @var int
-     */
-    protected $consumedMessages = 0;
+    protected int $maxMessages = 0;
 
-    /**
-     * @var int
-     */
-    protected $unexpectedErrorExitCode = 3;
+    protected int $consumedMessages = 0;
 
-    /**
-     * @var int
-     */
-    protected $idleTimeout = 0;
+    protected int $unexpectedErrorExitCode = 3;
 
-    /**
-     * @var int
-     */
-    protected $idleTimeoutExitCode = 0;
+    protected int $idleTimeout = 0;
 
-    /**
-     * @var DateTime|null
-     */
-    protected $gracefulMaxExecutionDateTime;
+    protected int $idleTimeoutExitCode = 0;
 
-    /**
-     * @var int
-     */
-    protected $gracefulTimeoutExitCode = 0;
+    protected ?DateTime $gracefulMaxExecutionDateTime;
 
-    /**
-     * @var string
-     */
-    protected $consumerTag;
+    protected int $gracefulTimeoutExitCode = 0;
 
-    /**
-     * @var bool
-     */
-    protected $forceStop = false;
+    protected string $consumerTag;
 
-    /**
-     * @var Queue
-     */
-    protected $queue;
+    protected bool $forceStop = false;
 
-    /**
-     * @var Exchange|null
-     */
-    protected $exchange;
+    protected Queue $queue;
 
-    /**
-     * @var Binding|null
-     */
-    protected $binding;
+    protected ?Exchange $exchange;
 
-    /**
-     * @var QosOptions|null
-     */
-    protected $qosOptions;
+    protected ?Binding $binding;
 
-    /**
-     * @var array
-     */
-    protected $metrics = [];
+    protected ?QosOptions $qosOptions;
+
+    protected array $metrics = [];
 
     protected RabbitMQService $rabbitMQService;
 
