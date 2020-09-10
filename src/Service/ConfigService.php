@@ -3,7 +3,7 @@
 namespace Yetione\RabbitMQ\Service;
 
 use Yetione\DTO\Exception\SerializerException;
-use Yetione\DTO\Serializer;;
+use Yetione\DTO\Serializer;
 use OutOfBoundsException;
 use Yetione\RabbitMQ\DTO\ConnectionOptions;
 use Yetione\RabbitMQ\DTO\Credentials;

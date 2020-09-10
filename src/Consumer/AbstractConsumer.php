@@ -15,6 +15,7 @@ use PhpAmqpLib\Exception\AMQPOutOfBoundsException;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Message\AMQPMessage;
+use Yetione\Json\Json;
 use Yetione\RabbitMQ\Connection\ConnectionInterface;
 use Yetione\RabbitMQ\Constant\Consumer;
 use Yetione\RabbitMQ\DTO\Binding;
@@ -34,7 +35,6 @@ use Yetione\RabbitMQ\Exception\ConnectionException;
 use Yetione\RabbitMQ\Exception\StopConsumerException;
 use Yetione\RabbitMQ\Service\RabbitMQService;
 use Throwable;
-use Zend\Json\Json;
 
 /**
  * TODO: Проверка памяти

@@ -5,6 +5,7 @@ namespace Yetione\RabbitMQ\Producer;
 
 
 use PhpAmqpLib\Message\AMQPMessage;
+use Yetione\Json\Json;
 use Yetione\RabbitMQ\Connection\ConnectionInterface;
 use Yetione\RabbitMQ\DTO\Exchange;
 use Yetione\RabbitMQ\Event\EventDispatcherInterface;
@@ -13,7 +14,6 @@ use Yetione\RabbitMQ\Event\OnBeforePublishingMessageEvent;
 use Yetione\RabbitMQ\Exception\ConnectionException;
 use Yetione\RabbitMQ\Factory\MessageFactoryInterface;
 use Yetione\RabbitMQ\Service\RabbitMQService;
-use Zend\Json\Json;
 
 
 /**
