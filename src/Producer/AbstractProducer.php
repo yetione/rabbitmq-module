@@ -12,7 +12,7 @@ use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterPublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforePublishingMessageEvent;
 use Yetione\RabbitMQ\Exception\ConnectionException;
-use Yetione\RabbitMQ\Factory\MessageFactoryInterface;
+use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
 use Yetione\RabbitMQ\Service\RabbitMQService;
 
 
