@@ -17,6 +17,7 @@ use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Message\AMQPMessage;
 use Yetione\Json\Json;
 use Yetione\RabbitMQ\Connection\ConnectionInterface;
+use Yetione\RabbitMQ\Connection\InteractsWithConnection;
 use Yetione\RabbitMQ\Constant\Consumer;
 use Yetione\RabbitMQ\DTO\Binding;
 use Yetione\RabbitMQ\DTO\Exchange;
@@ -46,8 +47,7 @@ use Throwable;
  */
 abstract class AbstractConsumer implements ConsumerInterface
 {
-
-    protected ConnectionInterface $connectionWrapper;
+    use InteractsWithConnection;
 
     protected string $memoryLimit = '6144M';
 
@@ -85,8 +85,6 @@ abstract class AbstractConsumer implements ConsumerInterface
 
     protected array $metrics = [];
 
-    protected RabbitMQService $rabbitMQService;
-
     protected Serializer $serializer;
 
     protected EventDispatcherInterface $eventDispatcher;
@@ -103,11 +101,7 @@ abstract class AbstractConsumer implements ConsumerInterface
         $this->rabbitMQService = $rabbitMQService;
         $this->serializer = $serializer;
         $this->eventDispatcher = $eventDispatcher;
-        $oConnection = $this->rabbitMQService->getConnection($this->connectionName, $this->connectionOptionsName);
-        if (null === $oConnection) {
-            throw new ConnectionException("Cannot create connection {$this->connectionName} with option {$this->connectionOptionsName}.");
-        }
-        $this->setConnectionWrapper($oConnection);
+        $this->setConnectionWrapper($this->createConnection());
     }
 
     /**
@@ -167,17 +161,8 @@ abstract class AbstractConsumer implements ConsumerInterface
     protected function nextIteration(): bool
     {
         gc_collect_cycles();
-        return $this->isMessageExists() && $this->checkConnection();
-    }
-
-    /**
-     * Метод проверяет состояние соединения
-     * @return bool
-     */
-    protected function checkConnection()
-    {
-        $oConnection = $this->getConnectionWrapper();
-        return $oConnection->isConnectionOpen() && $oConnection->isChannelOpen();
+        $this->maybeReconnect();
+        return $this->isMessageExists() && $this->isConnected();
     }
 
     /**
@@ -284,6 +269,7 @@ abstract class AbstractConsumer implements ConsumerInterface
                             throw $e;
                         }
                     }
+                    $this->maybeReconnect();
                 }
             }
         }
@@ -384,15 +370,7 @@ abstract class AbstractConsumer implements ConsumerInterface
     protected function setupQosOptions()
     {
         if (null !== ($oQosOptions=$this->getQosOptions())) {
-            try {
-                $this->getConnectionWrapper()->getChannel()->basic_qos(
-                    $oQosOptions->getPrefetchSize(),
-                    $oQosOptions->getPrefetchCount(),
-                    $oQosOptions->getGlobal()
-                );
-            } catch (AMQPTimeoutException $e) {
-                // TODO: Log
-            }
+            $this->getConnectionWrapper()->declareQosOptions($oQosOptions);
         }
     }
 
@@ -437,7 +415,7 @@ abstract class AbstractConsumer implements ConsumerInterface
 
     protected function getMessageChannel(AMQPMessage $message): AMQPChannel
     {
-        return null !== $message->getChannel() ? $message->getChannel() : $this->getConnectionWrapper()->getChannel();
+        return null !== $message->getChannel() ? $message->getChannel() : $this->channel();
     }
 
     /**
@@ -446,7 +424,7 @@ abstract class AbstractConsumer implements ConsumerInterface
     public function stop()
     {
         $this->removeTemporaryData();
-        $this->closeConnection();
+        $this->close();
     }
 
     /**
@@ -454,33 +432,24 @@ abstract class AbstractConsumer implements ConsumerInterface
      */
     protected function removeTemporaryData()
     {
+        $con = $this->getConnectionWrapper();
         if (null !== ($oBinding=$this->getBinding()) && $oBinding->isTemporary()) {
             if ($oBinding instanceof ExchangeBinding) {
-                $this->getConnectionWrapper()->unbindExchange($oBinding);
+                $con->unbindExchange($oBinding);
             } elseif ($oBinding instanceof QueueBinding) {
-                $this->getConnectionWrapper()->unbindQueue($oBinding);
+                $con->unbindQueue($oBinding);
             }
         }
         if (null !== ($oExchange=$this->getExchange()) && $oExchange->isTemporary()) {
-            $this->getConnectionWrapper()->deleteExchange($oExchange, true);
+            $con->deleteExchange($oExchange, true);
         }
         if ($this->getQueue()->isTemporary()) {
-            $this->getConnectionWrapper()->deleteQueue($this->getQueue(), true);
+            $con->deleteQueue($this->getQueue(), true);
         }
     }
 
     /**
-     * Метод закрывает соединение
-     */
-    protected function closeConnection()
-    {
-        if ($this->getConnectionWrapper()->isConnectionOpen()) {
-            $this->getConnectionWrapper()->close();
-        }
-    }
-
-    /**
-     * Метод выбирает стратегию таймаута для метода $this->>getConnectionWrapper()->getChannel()->wait().
+     * Метод выбирает стратегию таймаута для метода $this->getConnectionWrapper()->getChannel()->wait().
      * @return array Of structure
      *  {
      *      timeoutType: string; // one of self::TIMEOUT_TYPE_*
@@ -761,42 +730,6 @@ abstract class AbstractConsumer implements ConsumerInterface
     public function setQosOptions(?QosOptions $qosOptions): self
     {
         $this->qosOptions = $qosOptions;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getConnectionOptionsName(): string
-    {
-        return $this->connectionOptionsName;
-    }
-
-    /**
-     * @param string $connectionOptionsName
-     * @return $this
-     */
-    public function setConnectionOptionsName(string $connectionOptionsName): self
-    {
-        $this->connectionOptionsName = $connectionOptionsName;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getConnectionName(): string
-    {
-        return $this->connectionName;
-    }
-
-    /**
-     * @param string $connectionName
-     * @return $this
-     */
-    public function setConnectionName(string $connectionName): self
-    {
-        $this->connectionName = $connectionName;
         return $this;
     }
 

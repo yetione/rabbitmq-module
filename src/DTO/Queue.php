@@ -67,7 +67,23 @@ class Queue implements DTOInterface
     private $nowait;
 
     /**
-     * Массив доп. аргументов queue.
+     * Массив доп. аргументов queue:
+     * x-message-ttl -- время жизни сообщения в мс.
+     * x-expires -- время жизни очереди в мс.
+     * x-dead-letter-exchange -- exchange в который будут отправляться "мёртвые" сообщения:
+     *                              - basic_reject, basic_nack with requeue=false;
+     *                              - вышел TTL (x-message-ttl, message expiration)
+     *                              - сообщение не обработано из-за лимитов длины queue
+     * x-dead-letter-routing-key -- routing key для "мёртвого сообщения"
+     * x-max-length -- максимальное кол-во сообщений в queue
+     * x-max-length-bytes -- максимальный размер сообщений в queue
+     * x-overflow -- политика при переполнение:
+     *                      - drop-head - отбрасываются сообщения с начала очереди (старые)
+     *                      - reject-publish - отбрасываются сообщения с конца очереди (новые)
+     * x-max-priority -- приоритет queue. 0-255, сообщения с самым высоким приоритетом будут обрабатываться в queue с
+     *                      с самым высоким приоритетом
+     * x-queue-mode -- режим работы queue (default, lazy)
+     * x-queue-type -- тип queue (quorum, classic)
      *
      * @var array|null
      * @Assert\Type(type={"array", "null"})

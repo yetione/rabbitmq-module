@@ -4,10 +4,13 @@
 namespace Yetione\RabbitMQ\Producer;
 
 
+use PhpAmqpLib\Exception\AMQPChannelClosedException;
+use PhpAmqpLib\Exception\AMQPConnectionBlockedException;
+use PhpAmqpLib\Exception\AMQPConnectionClosedException;
 use PhpAmqpLib\Message\AMQPMessage;
-use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterFlushingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforeFlushingMessageEvent;
+use Yetione\RabbitMQ\Event\OnErrorFlushingMessageEvent;
 use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
 use Yetione\RabbitMQ\Message\Factory\NewMessageFactory;
 
@@ -16,8 +19,6 @@ abstract class BatchProducer extends AbstractProducer
     protected int $batchSize = 50;
 
     protected int $currentBatchSize = 0;
-
-    protected EventDispatcherInterface $eventDispatcher;
 
     public function resetCurrentBatch(): self
     {
@@ -37,7 +38,7 @@ abstract class BatchProducer extends AbstractProducer
     {
         $oExchange = $this->getExchange();
         $this->beforePublish();
-        $this->getConnectionWrapper()->getChannel()
+        $this->channel()
             ->batch_basic_publish($message, $oExchange->getName(), $routingKey, $mandatory, $immediate, $ticket);
         $this->currentBatchSize++;
         $this->afterPublish($message);
@@ -53,10 +54,25 @@ abstract class BatchProducer extends AbstractProducer
     public function flushMessage(bool $force=true): self
     {
         if (($force || 0 === $this->currentBatchSize % $this->getBatchSize())) {
-            $this->eventDispatcher->dispatch((new OnBeforeFlushingMessageEvent())->setProducer($this));
-            $this->getConnectionWrapper()->getChannel()->publish_batch();
-            $this->eventDispatcher->dispatch((new OnAfterFlushingMessageEvent())->setProducer($this));
-            $this->resetCurrentBatch();
+            $this->newTry();
+            if (1 < $this->currentTry()) {
+                $this->eventDispatcher->dispatch((new OnBeforeFlushingMessageEvent())->setProducer($this));
+            }
+            try {
+                $this->channel()->publish_batch();
+                $this->eventDispatcher->dispatch((new OnAfterFlushingMessageEvent())->setProducer($this));
+                $this->resetCurrentBatch();
+            } catch (AMQPConnectionClosedException | AMQPChannelClosedException $e) {
+                // TODO: Log
+                $this->maybeReconnect();
+                if ($this->isNeedRetry()) {
+                    return $this->flushMessage($force);
+                }
+                $this->eventDispatcher->dispatch((new OnErrorFlushingMessageEvent())->setProducer($this)->setParams(['error'=>$e]));
+            } catch (AMQPConnectionBlockedException $e) {
+                // TODO: Log
+                $this->eventDispatcher->dispatch((new OnErrorFlushingMessageEvent())->setProducer($this)->setParams(['error'=>$e]));
+            }
         }
         return $this;
     }

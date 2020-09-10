@@ -5,12 +5,14 @@ namespace Yetione\RabbitMQ\Producer;
 
 
 use PhpAmqpLib\Message\AMQPMessage;
+use Throwable;
 use Yetione\Json\Json;
-use Yetione\RabbitMQ\Connection\ConnectionInterface;
+use Yetione\RabbitMQ\Connection\InteractsWithConnection;
 use Yetione\RabbitMQ\DTO\Exchange;
 use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterPublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforePublishingMessageEvent;
+use Yetione\RabbitMQ\Event\OnErrorPublishingMessageEvent;
 use Yetione\RabbitMQ\Exception\ConnectionException;
 use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
 use Yetione\RabbitMQ\Service\RabbitMQService;
@@ -23,21 +25,25 @@ use Yetione\RabbitMQ\Service\RabbitMQService;
  */
 abstract class AbstractProducer implements ProducerInterface
 {
-    protected MessageFactoryInterface $messageFactory;
+    use InteractsWithConnection;
 
-    protected ConnectionInterface $connectionWrapper;
+    protected MessageFactoryInterface $messageFactory;
 
     protected string $connectionOptionsName = 'producer';
 
     protected string $connectionName = 'default_producer';
 
-    protected bool $autoReconnect = true;
-
     protected Exchange $exchange;
 
-    protected RabbitMQService $rabbitMQService;
-
     protected EventDispatcherInterface $eventDispatcher;
+
+    /**
+     * Кол-во повторных попыток
+     * @var int
+     */
+    protected int $retries = 5;
+
+    protected int $currentTry = 0;
 
     /**
      * AbstractProducer constructor.
@@ -49,21 +55,20 @@ abstract class AbstractProducer implements ProducerInterface
     {
         $this->rabbitMQService = $rabbitMQService;
         $this->eventDispatcher = $eventDispatcher;
-        $oConnection = $this->rabbitMQService->getConnection($this->connectionName, $this->connectionOptionsName);
-        if (null === $oConnection) {
-            throw new ConnectionException("Cannot create connection {$this->connectionName} with option {$this->connectionOptionsName}.");
-        }
-        $this->setConnectionWrapper($oConnection);
+        $this->setConnectionWrapper($this->createConnection());
     }
 
     protected function beforePublish()
     {
-        $this->checkConnection();
-        $this->getConnectionWrapper()->declareExchange($this->getExchange());
-        $this->eventDispatcher->dispatch(
-            (new OnBeforePublishingMessageEvent())
-                ->setProducer($this)
-        );
+        $this->maybeReconnect();
+        $this->connection()->declareExchange($this->getExchange());
+        $this->newTry();
+        if (1 < $this->currentTry()) {
+            $this->eventDispatcher->dispatch(
+                (new OnBeforePublishingMessageEvent())
+                    ->setProducer($this)
+            );
+        }
     }
 
     protected function afterPublish(AMQPMessage $message)
@@ -73,36 +78,46 @@ abstract class AbstractProducer implements ProducerInterface
                 ->setProducer($this)
                 ->setMessage($message)
         );
+        $this->resetTries();
     }
 
-    /**
-     * @return $this
-     */
-    protected function checkConnection(): self
+    protected function onPublishError(AMQPMessage $message, Throwable $e)
     {
-        if (!$this->getConnectionWrapper()->isConnectionOpen() && $this->autoReconnect) {
-            $this->getConnectionWrapper()->reconnect();
-        }
-        if (!$this->getConnectionWrapper()->isChannelOpen()) {
-            $this->getConnectionWrapper()->getChannel(true);
-        }
-        return $this;
+        $this->eventDispatcher->dispatch(
+            (new OnErrorPublishingMessageEvent())
+            ->setProducer($this)->setMessage($message)
+            ->setParams(['error'=>$e])
+        );
     }
 
-    /**
-     * @return $this
-     */
-    public function closeConnectionWrapper(): self
+    protected function isNeedRetry(): bool
     {
-        if (null !== $this->connectionWrapper && $this->getConnectionWrapper()->isConnectionOpen()) {
-            $this->getConnectionWrapper()->close();
+        if ($this->currentTry <= $this->getRetries()) {
+            return true;
         }
-        return $this;
+        // Попытки кончились, а значит обнуляем счетчик
+        $this->resetTries();
+        return false;
+    }
+
+    protected function newTry()
+    {
+        $this->currentTry++;
+    }
+
+    protected function resetTries()
+    {
+        $this->currentTry = 0;
+    }
+
+    protected function currentTry(): int
+    {
+        return $this->currentTry;
     }
 
     protected function closeProducer()
     {
-        $this->closeConnectionWrapper();
+        $this->close();
     }
 
     public function __destruct()
@@ -110,85 +125,20 @@ abstract class AbstractProducer implements ProducerInterface
         $this->closeProducer();
     }
 
-    /**
-     * @param Exchange $exchange
-     * @return $this
-     */
-    public function setExchange(Exchange $exchange): self
-    {
-        $this->exchange = $exchange;
-        return $this;
-    }
-
-    /**
-     * @return MessageFactoryInterface
-     */
     public function getMessageFactory(): MessageFactoryInterface
     {
         return $this->messageFactory;
     }
 
-    /**
-     * @param MessageFactoryInterface $messageFactory
-     * @return $this
-     */
     public function setMessageFactory(MessageFactoryInterface $messageFactory): AbstractProducer
     {
         $this->messageFactory = $messageFactory;
         return $this;
     }
 
-    /**
-     * @return ConnectionInterface
-     */
-    public function getConnectionWrapper(): ConnectionInterface
+    public function setExchange(Exchange $exchange): self
     {
-        return $this->connectionWrapper;
-    }
-
-    /**
-     * @param ConnectionInterface $connectionWrapper
-     * @return $this
-     */
-    public function setConnectionWrapper(ConnectionInterface $connectionWrapper): AbstractProducer
-    {
-        $this->connectionWrapper = $connectionWrapper;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getConnectionOptionsName(): string
-    {
-        return $this->connectionOptionsName;
-    }
-
-    /**
-     * @param string $connectionOptionsName
-     * @return $this
-     */
-    public function setConnectionOptionsName(string $connectionOptionsName): AbstractProducer
-    {
-        $this->connectionOptionsName = $connectionOptionsName;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getConnectionName(): string
-    {
-        return $this->connectionName;
-    }
-
-    /**
-     * @param string $connectionName
-     * @return $this
-     */
-    public function setConnectionName(string $connectionName): AbstractProducer
-    {
-        $this->connectionName = $connectionName;
+        $this->exchange = $exchange;
         return $this;
     }
 
@@ -201,6 +151,17 @@ abstract class AbstractProducer implements ProducerInterface
     }
 
     abstract protected function createExchange(): Exchange;
+
+    public function getRetries(): int
+    {
+        return $this->retries;
+    }
+
+    public function setRetries(int $retries): self
+    {
+        $this->retries = $retries;
+        return $this;
+    }
 
     public function getLoggerContext($message=null): array
     {

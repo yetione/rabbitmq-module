@@ -5,6 +5,7 @@ namespace Yetione\RabbitMQ\Producer;
 
 
 use PhpAmqpLib\Exception\AMQPChannelClosedException;
+use PhpAmqpLib\Exception\AMQPConnectionBlockedException;
 use PhpAmqpLib\Exception\AMQPConnectionClosedException;
 use PhpAmqpLib\Message\AMQPMessage;
 use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
@@ -24,28 +25,21 @@ abstract class SingleProducer extends AbstractProducer
     final public function publish(AMQPMessage $message, string $routingKey='', bool $mandatory = false, bool $immediate=false, ?int $ticket = null): ProducerInterface
     {
         $oExchange = $this->getExchange();
-//        $aLoggerContext = [
-//            'message'=>[
-//                'body'=>$message->getBody(),
-//                'routing_key'=>$routingKey,
-//                'properties'=>$message->get_properties(),
-//            ]
-//        ];
         $this->beforePublish();
         try {
-            $this->getConnectionWrapper()->getChannel()
-                ->basic_publish($message, $oExchange->getName(), $routingKey, $mandatory, $immediate, $ticket);;
-        } catch (AMQPChannelClosedException $e) {
+            $this->channel()
+                ->basic_publish($message, $oExchange->getName(), $routingKey, $mandatory, $immediate, $ticket);
+        } catch (AMQPConnectionClosedException | AMQPChannelClosedException $e) {
             // TODO: Log
-            if ($this->autoReconnect) {
-                $this->getConnectionWrapper()->closeChannel()->getChannel();
+            $this->maybeReconnect();
+            if ($this->isNeedRetry()) {
+                return $this->publish($message, $routingKey, $mandatory, $immediate, $ticket);
             }
+            $this->onPublishError($message, $e);
             return $this;
-        } catch (AMQPConnectionClosedException $e) {
+        } catch (AMQPConnectionBlockedException $e) {
             // TODO: Log
-            if ($this->autoReconnect) {
-                $this->getConnectionWrapper()->reconnect();
-            }
+            $this->onPublishError($message, $e);
             return $this;
         }
         $this->afterPublish($message);
