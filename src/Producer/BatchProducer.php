@@ -8,8 +8,8 @@ use PhpAmqpLib\Message\AMQPMessage;
 use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterFlushingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforeFlushingMessageEvent;
-use Yetione\RabbitMQ\Factory\MessageFactoryInterface;
-use Yetione\RabbitMQ\Factory\NewMessageFactory;
+use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
+use Yetione\RabbitMQ\Message\Factory\NewMessageFactory;
 
 abstract class BatchProducer extends AbstractProducer
 {
