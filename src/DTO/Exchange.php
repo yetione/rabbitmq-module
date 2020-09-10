@@ -31,6 +31,9 @@ class Exchange implements DTOInterface
     private $type;
 
     /**
+     * Если true, то при попытке создать уже существующий exchange вернется успешный результат,
+     * иначе - ошибка (мб исключение)
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("passive")
@@ -38,6 +41,8 @@ class Exchange implements DTOInterface
     private $passive;
 
     /**
+     * exchange хранится на диске
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("durable")
@@ -45,6 +50,8 @@ class Exchange implements DTOInterface
     private $durable;
 
     /**
+     * Удалить exchange после того, как все очереди завершат работу.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("auto_delete")
@@ -52,6 +59,10 @@ class Exchange implements DTOInterface
     private $autoDelete;
 
     /**
+     * Внутренний exchange. Если true, то не может использоваться для отправки сообщений.
+     * Только для связи с другими exchange. Невидимы для клиентских приложений, используются для
+     * создания сети.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("internal")
@@ -59,6 +70,9 @@ class Exchange implements DTOInterface
     private $internal;
 
     /**
+     * Если true - RabbitMQ не ответит на метод. В этом случае клиент не должен ожидать ответа от сервера.
+     * Если метод не может быть выполнен, то будет выброшено исключение.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("nowait")
@@ -66,6 +80,8 @@ class Exchange implements DTOInterface
     private $nowait;
 
     /**
+     * Массив с доп. аргументами. Обычно используется для настройки альтернативных вариантов доставки сообщений.
+     *
      * @var array|null
      * @Assert\Type(type={"array", "null"})
      * @SerializedName("arguments")

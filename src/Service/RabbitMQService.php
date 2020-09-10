@@ -4,6 +4,9 @@
 namespace Yetione\RabbitMQ\Service;
 
 
+use PhpAmqpLib\Connection\Heartbeat\PCNTLHeartbeatSender;
+use PhpAmqpLib\Exception\AMQPRuntimeException;
+use Throwable;
 use Yetione\DTO\Exception\SerializerException;
 use Yetione\DTO\Serializer;
 use Exception;
@@ -86,6 +89,13 @@ class RabbitMQService
             // TODO: Log
             return null;
         }
+        try {
+            $heartbeatSender = new PCNTLHeartbeatSender($oRabbitConnection);
+            $heartbeatSender->register();
+        } catch (AMQPRuntimeException $e) {
+            // TODO: Log
+        }
+
         return new ConnectionWrapper($oRabbitConnection);
     }
 
@@ -125,12 +135,12 @@ class RabbitMQService
             if (empty($consumer->getConsumerTag())) {
                 $consumer->setConsumerTag($consumerTag);
             }
-        } catch (\Exception | \Throwable $e) {
+        } catch (Exception | Throwable $e) {
             $consumer->setConsumerTag($consumerTag);
         }
         try {
             $iExitCode = $consumer->start();
-        } catch (\Exception | \Throwable $e) {
+        } catch (Exception | Throwable $e) {
             // TODO: Log
             $iExitCode = $this->getConsumerErrorStatusCode();
         }

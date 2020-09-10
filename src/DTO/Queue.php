@@ -18,6 +18,9 @@ class Queue implements DTOInterface
     private $name;
 
     /**
+     * Если true, то при попытке создать уже существующую queue вернется успешный результат,
+     * иначе - ошибка.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("passive")
@@ -25,6 +28,8 @@ class Queue implements DTOInterface
     private $passive;
 
     /**
+     * queue хранится на диске
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("durable")
@@ -32,6 +37,9 @@ class Queue implements DTOInterface
     private $durable;
 
     /**
+     * Exclusive queue доступны только в пределах текущего соединения и будут удалены при закрытие соединения.
+     * passive нельзя использовать с exclusive queue
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("exclusive")
@@ -39,6 +47,9 @@ class Queue implements DTOInterface
     private $exclusive;
 
     /**
+     * Queue удаляется, когда завершает работу её последний consumer. Если у queue небыло consumers, то она не удалится.
+     * Такие queue можно удалять с помощью delete запроса.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("auto_delete")
@@ -46,6 +57,9 @@ class Queue implements DTOInterface
     private $autoDelete;
 
     /**
+     * Если true - RabbitMQ не ответит на метод. В этом случае клиент не должен ожидать ответа от сервера.
+     * Если метод не может быть выполнен, то будет выброшено исключение.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("nowait")
@@ -53,6 +67,8 @@ class Queue implements DTOInterface
     private $nowait;
 
     /**
+     * Массив доп. аргументов queue.
+     *
      * @var array|null
      * @Assert\Type(type={"array", "null"})
      * @SerializedName("arguments")
