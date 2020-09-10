@@ -6,6 +6,7 @@ namespace Yetione\RabbitMQ\Consumer;
 
 use DateTime;
 use InvalidArgumentException;
+use PhpAmqpLib\Exception\AMQPEmptyDeliveryTagException;
 use Yetione\DTO\Serializer;
 use ErrorException;
 use Exception;
@@ -14,7 +15,7 @@ use PhpAmqpLib\Exception\AMQPOutOfBoundsException;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Message\AMQPMessage;
-use Yetione\RabbitMQ\Connection\ConnectionWrapper;
+use Yetione\RabbitMQ\Connection\ConnectionInterface;
 use Yetione\RabbitMQ\Constant\Consumer;
 use Yetione\RabbitMQ\DTO\Binding;
 use Yetione\RabbitMQ\DTO\Exchange;
@@ -22,6 +23,7 @@ use Yetione\RabbitMQ\DTO\ExchangeBinding;
 use Yetione\RabbitMQ\DTO\QosOptions;
 use Yetione\RabbitMQ\DTO\Queue;
 use Yetione\RabbitMQ\DTO\QueueBinding;
+use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterProcessingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforeProcessingMessageEvent;
 use Yetione\RabbitMQ\Event\OnConsumeEvent;
@@ -42,116 +44,65 @@ use Zend\Json\Json;
  * Class AbstractConsumer
  * @package RabbitMQ\Consumer
  */
-abstract class AbstractConsumer
+abstract class AbstractConsumer implements ConsumerInterface
 {
-    /**
-     * @var ConnectionWrapper
-     */
-    protected $connectionWrapper;
 
-    /**
-     * @var string
-     */
-    protected $memoryLimit = '6144M';
+    protected ConnectionInterface $connectionWrapper;
 
-    /**
-     * @var int
-     */
-    protected $maxExecutionTime = 0;
+    protected string $memoryLimit = '6144M';
 
-    /**
-     * @var string
-     */
-    protected $connectionOptionsName = 'consumer';
+    protected int $maxExecutionTime = 0;
 
-    /**
-     * @var string
-     */
-    protected $connectionName = 'default_consumer';
+    protected string $connectionOptionsName = 'consumer';
 
-    /**
-     * @var int
-     */
-    protected $maxMessages = 0;
+    protected string $connectionName = 'default_consumer';
 
-    /**
-     * @var int
-     */
-    protected $consumedMessages = 0;
+    protected int $maxMessages = 0;
 
-    /**
-     * @var int
-     */
-    protected $unexpectedErrorExitCode = 3;
+    protected int $consumedMessages = 0;
 
-    /**
-     * @var int
-     */
-    protected $idleTimeout = 0;
+    protected int $unexpectedErrorExitCode = 3;
 
-    /**
-     * @var int
-     */
-    protected $idleTimeoutExitCode = 0;
+    protected int $idleTimeout = 0;
 
-    /**
-     * @var DateTime|null
-     */
-    protected $gracefulMaxExecutionDateTime;
+    protected int $idleTimeoutExitCode = 0;
 
-    /**
-     * @var int
-     */
-    protected $gracefulTimeoutExitCode = 0;
+    protected ?DateTime $gracefulMaxExecutionDateTime;
 
-    /**
-     * @var string
-     */
-    protected $consumerTag;
+    protected int $gracefulTimeoutExitCode = 0;
 
-    /**
-     * @var bool
-     */
-    protected $forceStop = false;
+    protected string $consumerTag;
 
-    /**
-     * @var Queue
-     */
-    protected $queue;
+    protected bool $forceStop = false;
 
-    /**
-     * @var Exchange|null
-     */
-    protected $exchange;
+    protected Queue $queue;
 
-    /**
-     * @var Binding|null
-     */
-    protected $binding;
+    protected ?Exchange $exchange;
 
-    /**
-     * @var QosOptions|null
-     */
-    protected $qosOptions;
+    protected ?Binding $binding;
 
-    /**
-     * @var array
-     */
-    protected $metrics = [];
+    protected ?QosOptions $qosOptions;
+
+    protected array $metrics = [];
 
     protected RabbitMQService $rabbitMQService;
 
     protected Serializer $serializer;
 
+    protected EventDispatcherInterface $eventDispatcher;
+
     /**
      * AbstractConsumer constructor.
      * @param RabbitMQService $rabbitMQService
      * @param Serializer $serializer
+     * @param EventDispatcherInterface $eventDispatcher
      * @throws ConnectionException
      */
-    public function __construct(RabbitMQService $rabbitMQService, Serializer $serializer)
+    public function __construct(RabbitMQService $rabbitMQService, Serializer $serializer, EventDispatcherInterface $eventDispatcher)
     {
         $this->rabbitMQService = $rabbitMQService;
+        $this->serializer = $serializer;
+        $this->eventDispatcher = $eventDispatcher;
         $oConnection = $this->rabbitMQService->getConnection($this->connectionName, $this->connectionOptionsName);
         if (null === $oConnection) {
             throw new ConnectionException("Cannot create connection {$this->connectionName} with option {$this->connectionOptionsName}.");
@@ -167,14 +118,14 @@ abstract class AbstractConsumer
     public function processMessageFromQueue(AMQPMessage $message)
     {
         $oEvent = (new OnBeforeProcessingMessageEvent())->setConsumer($this)->setMessage($message);
-        $this->getEventManager()->trigger($oEvent);
+        $this->eventDispatcher->dispatch($oEvent);
 
         try {
             $iResult = $this->processMessage($message);
             $this->handleProcessResult($message, $iResult);
 
             $oEvent = (new OnAfterProcessingMessageEvent())->setConsumer($this)->setMessage($message);
-            $this->getEventManager()->trigger($oEvent);
+            $this->eventDispatcher->dispatch($oEvent);
         } catch (StopConsumerException $e) {
             // TODO: Log
             $this->handleProcessResult($message, $e->getResultCode());
@@ -182,7 +133,7 @@ abstract class AbstractConsumer
                 ->setConsumer($this)
                 ->setMessage($message)
                 ->setError($e);
-            $this->getEventManager()->trigger($oEvent);
+            $this->eventDispatcher->dispatch($oEvent);
             $this->stop();
         } catch (Exception | Throwable $e) {
             // TODO: Log
@@ -190,7 +141,7 @@ abstract class AbstractConsumer
                 ->setConsumer($this)
                 ->setMessage($message)
                 ->setError($e);
-            $this->getEventManager()->trigger($oEvent);
+            $this->eventDispatcher->dispatch($oEvent);
             throw $e;
         }
     }
@@ -199,6 +150,7 @@ abstract class AbstractConsumer
      * Метод обработки сообщения.
      * @param AMQPMessage $message
      * @return int
+     * @throws StopConsumerException
      */
     abstract protected function processMessage(AMQPMessage $message): int;
 
@@ -253,7 +205,7 @@ abstract class AbstractConsumer
                 return -1;
             }
             $oEvent = (new OnConsumerStart())->setConsumer($this);
-            $oStartResult = $this->getEventManager()->trigger($oEvent);
+            $oStartResult = $this->eventDispatcher->dispatch($oEvent);
             if ($oStartResult->stopped()) {
                 $this->stop();
                 // TODO: Log
@@ -261,7 +213,7 @@ abstract class AbstractConsumer
             }
             $iResult = $this->consume();
             $oEvent = (new OnConsumerFinish())->setConsumer($this);
-            $this->getEventManager()->trigger($oEvent);
+            $this->eventDispatcher->dispatch($oEvent);
             $this->stop();
             $this->metrics['end_time'] = microtime(true);
             $this->metrics['execution_time'] = $this->metrics['end_time'] - $this->metrics['start_time'];
@@ -288,7 +240,7 @@ abstract class AbstractConsumer
         // TODO: Log
         while ($this->nextIteration()) {
             $oEvent = (new OnConsumeEvent())->setConsumer($this);
-            $this->getEventManager()->trigger($oEvent);
+            $this->eventDispatcher->dispatch($oEvent);
             $this->maybeStopConsumer();
             try {
                 $aWaitTimeout = $this->chooseWaitTimeout();
@@ -323,7 +275,7 @@ abstract class AbstractConsumer
                         // TODO: Log
                         return $this->getIdleTimeoutExitCode();
                     }
-                    $this->getEventManager()->trigger($oEvent);
+                    $this->eventDispatcher->dispatch($oEvent);
                     if ($oEvent->isForceStop()) {
                         if (null !== $this->getIdleTimeoutExitCode()) {
                             // TODO: Log
@@ -458,11 +410,13 @@ abstract class AbstractConsumer
      * Метод отвечает за обработку результата процессинга сообщения.
      * @param AMQPMessage $message
      * @param $processResult
+     * @throws AMQPEmptyDeliveryTagException
+     * @throws StopConsumerException
      */
     protected function handleProcessResult(AMQPMessage $message, $processResult)
     {
         $oChannel = $this->getMessageChannel($message);
-        $sDeliveryTag = $message->delivery_info['delivery_tag'];
+        $sDeliveryTag = $message->getDeliveryTag();
         switch ($processResult) {
             case Consumer::RESULT_REJECT:
                $oChannel->basic_reject($sDeliveryTag, false);
@@ -483,23 +437,7 @@ abstract class AbstractConsumer
 
     protected function getMessageChannel(AMQPMessage $message): AMQPChannel
     {
-        if (property_exists($message, 'delivery_info') && is_array($message->delivery_info)) {
-            if (isset($message->delivery_info['channel'])) {
-                return $message->delivery_info['channel'];
-            }
-        }
-        return $this->getConnectionWrapper()->getChannel();
-    }
-
-    protected function getMessageDeliveryTag(AMQPMessage $message)
-    {
-        if (property_exists($message, 'delivery_info') && is_array($message->delivery_info)) {
-            if (isset($message->delivery_info['delivery_tag'])) {
-                return $message->delivery_info['delivery_tag'];
-            }
-        }
-        // TODO: Log
-        return rand(0, 100);
+        return null !== $message->getChannel() ? $message->getChannel() : $this->getConnectionWrapper()->getChannel();
     }
 
     /**
@@ -651,18 +589,18 @@ abstract class AbstractConsumer
     }
 
     /**
-     * @return ConnectionWrapper
+     * @return ConnectionInterface
      */
-    public function getConnectionWrapper(): ConnectionWrapper
+    public function getConnectionWrapper(): ConnectionInterface
     {
         return $this->connectionWrapper;
     }
 
     /**
-     * @param ConnectionWrapper $connectionWrapper
+     * @param ConnectionInterface $connectionWrapper
      * @return $this
      */
-    public function setConnectionWrapper(ConnectionWrapper $connectionWrapper): self
+    public function setConnectionWrapper(ConnectionInterface $connectionWrapper): self
     {
         $this->connectionWrapper = $connectionWrapper;
         return $this;

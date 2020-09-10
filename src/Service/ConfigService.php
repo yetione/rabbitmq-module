@@ -19,48 +19,39 @@ class ConfigService
     /**
      * @var Credentials[]
      */
-    private $credentials = [];
+    private array $credentials = [];
 
     /**
      * @var Node[]
      */
-    private $nodes = [];
+    private array $nodes = [];
 
     /**
      * @var ConnectionOptions[]
      */
-    private $connectionsOptions = [];
+    private array $connectionsOptions = [];
 
     /**
      * @var bool
      */
-    private $configLoaded = false;
+    private bool $configLoaded = false;
 
     /**
      * @var Serializer
      */
-    private $serializer;
+    private Serializer $serializer;
 
-    public function __construct(Serializer $serializer)
+    protected ConfigProviderInterface $configProvider;
+
+    public function __construct(Serializer $serializer, ConfigProviderInterface $configProvider)
     {
         $this->serializer = $serializer;
+        $this->configProvider = $configProvider;
     }
-
-    protected function readConfig(): array
-    {
-        // TODO: Refactor
-        try {
-            $oConfig = $this->getConfigService();
-        } catch (ServiceNotFoundException $e) {
-            return;
-        }
-        return $oConfig->get('rabbitmq', []);
-    }
-
 
     protected function loadConfig()
     {
-        $aRabbitData = $this->readConfig();
+        $aRabbitData = $this->configProvider->read();
 
         if (isset($aRabbitData['credentials'])) {
             foreach ($aRabbitData['credentials'] as $sName => $aData) {
