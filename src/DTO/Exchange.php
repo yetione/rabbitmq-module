@@ -82,6 +82,8 @@ class Exchange implements DTOInterface
     /**
      * Массив с доп. аргументами. Обычно используется для настройки альтернативных вариантов доставки сообщений.
      *
+     * alternate-exchange -- exchange, в который будут направляться сообщения, необработанные в этом
+     *
      * @var array|null
      * @Assert\Type(type={"array", "null"})
      * @SerializedName("arguments")
