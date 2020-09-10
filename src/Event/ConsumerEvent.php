@@ -16,15 +16,9 @@ abstract class ConsumerEvent extends AbstractEvent
     const ON_START = 'ON_CONSUMER_START';
     const ON_FINISH = 'ON_CONSUMER_FINISH';
 
-    /**
-     * @var AMQPMessage
-     */
-    protected $message;
+    protected AMQPMessage $message;
 
-    /**
-     * @var AbstractConsumer
-     */
-    protected $consumer;
+    protected AbstractConsumer $consumer;
 
     /**
      * @return AbstractConsumer

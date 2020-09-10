@@ -19,7 +19,7 @@ abstract class BasicGetConsumer extends AbstractConsumer
     {
         parent::setupConsume();
         $oQueue=$this->getQueue();
-        $this->getEventManager()->attach(
+        $this->eventDispatcher->listen(
             ConsumerEvent::ON_CONSUME,
             function (OnConsumeEvent $event) use ($oQueue) {
                 $oMessage = $this->getConnectionWrapper()->getChannel()->basic_get($oQueue->getName());

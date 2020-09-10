@@ -5,6 +5,7 @@ namespace Yetione\RabbitMQ\Producer;
 
 
 use PhpAmqpLib\Message\AMQPMessage;
+use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterFlushingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforeFlushingMessageEvent;
 use Yetione\RabbitMQ\Factory\MessageFactoryInterface;
@@ -12,15 +13,11 @@ use Yetione\RabbitMQ\Factory\NewMessageFactory;
 
 abstract class BatchProducer extends AbstractProducer
 {
-    /**
-     * @var int
-     */
-    protected $batchSize = 50;
+    protected int $batchSize = 50;
 
-    /**
-     * @var int
-     */
-    protected $currentBatchSize = 0;
+    protected int $currentBatchSize = 0;
+
+    protected EventDispatcherInterface $eventDispatcher;
 
     public function resetCurrentBatch(): self
     {
@@ -56,9 +53,9 @@ abstract class BatchProducer extends AbstractProducer
     public function flushMessage(bool $force=true): self
     {
         if (($force || 0 === $this->currentBatchSize % $this->getBatchSize())) {
-            $this->getEventManager()->trigger((new OnBeforeFlushingMessageEvent())->setProducer($this));
+            $this->eventDispatcher->dispatch((new OnBeforeFlushingMessageEvent())->setProducer($this));
             $this->getConnectionWrapper()->getChannel()->publish_batch();
-            $this->getEventManager()->trigger((new OnAfterFlushingMessageEvent())->setProducer($this));
+            $this->eventDispatcher->dispatch((new OnAfterFlushingMessageEvent())->setProducer($this));
             $this->resetCurrentBatch();
         }
         return $this;

@@ -4,10 +4,10 @@
 namespace Yetione\RabbitMQ\Producer;
 
 
-use InvalidArgumentException;
 use PhpAmqpLib\Message\AMQPMessage;
-use Yetione\RabbitMQ\Connection\ConnectionWrapper;
+use Yetione\RabbitMQ\Connection\ConnectionInterface;
 use Yetione\RabbitMQ\DTO\Exchange;
+use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterPublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforePublishingMessageEvent;
 use Yetione\RabbitMQ\Exception\ConnectionException;
@@ -23,46 +23,32 @@ use Zend\Json\Json;
  */
 abstract class AbstractProducer implements ProducerInterface
 {
-    /**
-     * @var MessageFactoryInterface
-     */
-    protected $messageFactory;
+    protected MessageFactoryInterface $messageFactory;
 
-    /**
-     * @var ConnectionWrapper
-     */
-    protected $connectionWrapper;
+    protected ConnectionInterface $connectionWrapper;
 
-    /**
-     * @var string
-     */
-    protected $connectionOptionsName = 'producer';
+    protected string $connectionOptionsName = 'producer';
 
-    /**
-     * @var string
-     */
-    protected $connectionName = 'default_producer';
+    protected string $connectionName = 'default_producer';
 
-    /**
-     * @var bool
-     */
-    protected $autoReconnect = true;
+    protected bool $autoReconnect = true;
 
-    /**
-     * @var Exchange
-     */
-    protected $exchange;
+    protected Exchange $exchange;
 
     protected RabbitMQService $rabbitMQService;
 
+    protected EventDispatcherInterface $eventDispatcher;
+
     /**
      * AbstractProducer constructor.
+     * @param RabbitMQService $rabbitMQService
+     * @param EventDispatcherInterface $eventDispatcher
      * @throws ConnectionException
-     * @throws InvalidArgumentException
      */
-    public function __construct(RabbitMQService $rabbitMQService)
+    public function __construct(RabbitMQService $rabbitMQService, EventDispatcherInterface $eventDispatcher)
     {
         $this->rabbitMQService = $rabbitMQService;
+        $this->eventDispatcher = $eventDispatcher;
         $oConnection = $this->rabbitMQService->getConnection($this->connectionName, $this->connectionOptionsName);
         if (null === $oConnection) {
             throw new ConnectionException("Cannot create connection {$this->connectionName} with option {$this->connectionOptionsName}.");
@@ -74,7 +60,7 @@ abstract class AbstractProducer implements ProducerInterface
     {
         $this->checkConnection();
         $this->getConnectionWrapper()->declareExchange($this->getExchange());
-        $this->getEventManager()->trigger(
+        $this->eventDispatcher->dispatch(
             (new OnBeforePublishingMessageEvent())
                 ->setProducer($this)
         );
@@ -82,7 +68,7 @@ abstract class AbstractProducer implements ProducerInterface
 
     protected function afterPublish(AMQPMessage $message)
     {
-        $this->getEventManager()->trigger(
+        $this->eventDispatcher->dispatch(
             (new OnAfterPublishingMessageEvent())
                 ->setProducer($this)
                 ->setMessage($message)
@@ -153,18 +139,18 @@ abstract class AbstractProducer implements ProducerInterface
     }
 
     /**
-     * @return ConnectionWrapper
+     * @return ConnectionInterface
      */
-    public function getConnectionWrapper(): ConnectionWrapper
+    public function getConnectionWrapper(): ConnectionInterface
     {
         return $this->connectionWrapper;
     }
 
     /**
-     * @param ConnectionWrapper $connectionWrapper
+     * @param ConnectionInterface $connectionWrapper
      * @return $this
      */
-    public function setConnectionWrapper(ConnectionWrapper $connectionWrapper): AbstractProducer
+    public function setConnectionWrapper(ConnectionInterface $connectionWrapper): AbstractProducer
     {
         $this->connectionWrapper = $connectionWrapper;
         return $this;
