@@ -4,18 +4,15 @@
 namespace Yetione\RabbitMQ\Connection;
 
 
+use Exception;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AbstractConnection;
-use PhpAmqpLib\Exception\AMQPConnectionClosedException;
-use PhpAmqpLib\Exception\AMQPInvalidArgumentException;
-use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exception\AMQPTimeoutException;
-use PhpAmqpLib\Wire\AMQPWriter;
+use Throwable;
 use Yetione\RabbitMQ\DTO\ExchangeBinding;
 use Yetione\RabbitMQ\DTO\Exchange;
 use Yetione\RabbitMQ\DTO\Queue;
 use Yetione\RabbitMQ\DTO\QueueBinding;
-use Yetione\RabbitMQ\Exception\ConnectionClosedException;
 
 class ConnectionWrapper implements ConnectionInterface
 {
@@ -66,7 +63,7 @@ class ConnectionWrapper implements ConnectionInterface
         if (null !== $this->channel) {
             try {
                 $this->channel->close();
-            } catch (\Exception | \Throwable $e) {
+            } catch (Exception | Throwable $e) {
                 // TODO: Log
             }
             $this->channel = null;
@@ -111,7 +108,7 @@ class ConnectionWrapper implements ConnectionInterface
         if ($this->isConnectionOpen()) {
             try {
                 $this->getConnection()->close();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // TODO: Log
             }
         }
@@ -146,25 +143,6 @@ class ConnectionWrapper implements ConnectionInterface
         $this->getConnection()->reconnect();
         $this->setChannel($this->createChannel());
         return $this;
-    }
-
-    /**
-     * @throws AMQPConnectionClosedException
-     * @throws AMQPInvalidArgumentException
-     * @throws AMQPRuntimeException
-     * @throws ConnectionClosedException
-     */
-    public function sendHeartbeat(): void
-    {
-        if (!$this->getConnection()->isConnected()) {
-            throw new ConnectionClosedException('Connection is now closed.');
-        }
-        $pkt = new AMQPWriter();
-        $pkt->write_octet(8);
-        $pkt->write_short(0);
-        $pkt->write_long(0);
-        $pkt->write_octet(0xCE);
-        $this->getConnection()->write($pkt->getvalue());
     }
 
     public function __destruct()
