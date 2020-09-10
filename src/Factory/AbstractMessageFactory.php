@@ -9,24 +9,15 @@ use PhpAmqpLib\Wire\AMQPTable;
 
 abstract class AbstractMessageFactory implements MessageFactoryInterface
 {
-    /**
-     * @var string
-     */
-    protected $contentType = 'text/plain';
+    protected string $contentType = 'text/plain';
 
-    /**
-     * @var int
-     */
-    protected $deliveryMode = AMQPMessage::DELIVERY_MODE_PERSISTENT;
+    protected int $deliveryMode = AMQPMessage::DELIVERY_MODE_PERSISTENT;
 
-    /**
-     * @var array
-     */
-    protected $defaultParameters;
+    protected array $defaultParameters;
 
-    protected $extendArrayMessage = true;
+    protected bool $extendArrayMessage = true;
 
-    protected $extensionKey = '__extension';
+    protected string $extensionKey = '__extension';
 
     /**
      * @return array

@@ -5,8 +5,7 @@ namespace Yetione\RabbitMQ\Factory;
 
 
 use PhpAmqpLib\Message\AMQPMessage;
-use PhpAmqpLib\Wire\AMQPTable;
-use Zend\Json\Json;
+use Yetione\Json\Json;
 
 class ReusableMessageFactory extends AbstractMessageFactory
 {
