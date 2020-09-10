@@ -11,9 +11,9 @@
     ],
     "minimum-stability": "stable",
     "require": {
-        "yetione/dtoable": "^1.3",
+        "yetione/dtoable": "^1",
         "php-amqplib/php-amqplib": "^2.12",
-        "yetione/php-json": "^1.2"
+        "yetione/php-json": "^1"
     },
     "autoload": {
         "psr-4": { "Yetione\\RabbitMQ\\": "src/"}
