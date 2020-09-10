@@ -16,6 +16,9 @@ abstract class ProducerEvent extends AbstractEvent
     const BEFORE_FLUSHING_MESSAGE = 'BEFORE_FLUSHING_MESSAGE';
     const AFTER_FLUSHING_MESSAGE = 'AFTER_FLUSHING_MESSAGE';
 
+    const ERROR_PUBLISHING_MESSAGE = 'ERROR_PUBLISHING_MESSAGE';
+    const ERROR_FLUSHING_MESSAGE = 'ERROR_FLUSHING_MESSAGE';
+
     /**
      * @var AMQPMessage
      */

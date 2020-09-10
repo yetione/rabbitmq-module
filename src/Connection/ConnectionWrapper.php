@@ -11,6 +11,7 @@ use PhpAmqpLib\Exception\AMQPTimeoutException;
 use Throwable;
 use Yetione\RabbitMQ\DTO\ExchangeBinding;
 use Yetione\RabbitMQ\DTO\Exchange;
+use Yetione\RabbitMQ\DTO\QosOptions;
 use Yetione\RabbitMQ\DTO\Queue;
 use Yetione\RabbitMQ\DTO\QueueBinding;
 
@@ -27,6 +28,13 @@ class ConnectionWrapper implements ConnectionInterface
     protected array $declaredQueuesBinds = [];
 
     protected array $declaredExchangeBindings = [];
+
+    /**
+     * Пауза в пол секунды перед реконнектом
+     * Microseconds (1/1000000 of sec) before reconnect
+     * @var int
+     */
+    protected int $waitBeforeReconnect = 10000;
 
     public function __construct(AbstractConnection $connection)
     {
@@ -140,6 +148,9 @@ class ConnectionWrapper implements ConnectionInterface
     {
         $this->closeChannel();
         $this->resetDeclaredData();
+        if ($this->getWaitBeforeReconnect() > 0) {
+            usleep($this->getWaitBeforeReconnect());
+        }
         $this->getConnection()->reconnect();
         $this->setChannel($this->createChannel());
         return $this;
@@ -342,11 +353,44 @@ class ConnectionWrapper implements ConnectionInterface
         }
     }
 
+    public function declareQosOptions(QosOptions $qosOptions): bool
+    {
+        try {
+            $this->getChannel()->basic_qos(
+                $qosOptions->getPrefetchSize(),
+                $qosOptions->getPrefetchCount(),
+                $qosOptions->getGlobal()
+            );
+            return true;
+        } catch (AMQPTimeoutException $e) {
+            // TODO: Log
+        }
+        return false;
+    }
+
     protected function resetDeclaredData()
     {
         $this->declaredExchanges = [];
         $this->declaredQueues = [];
         $this->declaredQueuesBinds = [];
         $this->declaredExchangeBindings = [];
+    }
+
+    /**
+     * @return int
+     */
+    public function getWaitBeforeReconnect(): int
+    {
+        return $this->waitBeforeReconnect;
+    }
+
+    /**
+     * @param int $waitBeforeReconnect
+     * @return ConnectionInterface
+     */
+    public function setWaitBeforeReconnect(int $waitBeforeReconnect): ConnectionInterface
+    {
+        $this->waitBeforeReconnect = $waitBeforeReconnect;
+        return $this;
     }
 }

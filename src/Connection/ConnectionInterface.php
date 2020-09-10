@@ -8,6 +8,7 @@ use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AbstractConnection;
 use Yetione\RabbitMQ\DTO\Exchange;
 use Yetione\RabbitMQ\DTO\ExchangeBinding;
+use Yetione\RabbitMQ\DTO\QosOptions;
 use Yetione\RabbitMQ\DTO\Queue;
 use Yetione\RabbitMQ\DTO\QueueBinding;
 
@@ -56,5 +57,10 @@ interface ConnectionInterface
 
     public function unbindQueue(QueueBinding $binding): bool;
 
+    public function declareQosOptions(QosOptions $qosOptions): bool;
+
+    public function getWaitBeforeReconnect(): int;
+
+    public function setWaitBeforeReconnect(int $waitBeforeReconnect): ConnectionInterface;
 
 }

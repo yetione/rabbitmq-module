@@ -22,7 +22,7 @@ abstract class BasicGetConsumer extends AbstractConsumer
         $this->eventDispatcher->listen(
             ConsumerEvent::ON_CONSUME,
             function (OnConsumeEvent $event) use ($oQueue) {
-                $oMessage = $this->getConnectionWrapper()->getChannel()->basic_get($oQueue->getName());
+                $oMessage = $this->channel()->basic_get($oQueue->getName());
                 if ($oMessage instanceof AMQPMessage) {
                     $this->processMessageFromQueue($oMessage);
                 }

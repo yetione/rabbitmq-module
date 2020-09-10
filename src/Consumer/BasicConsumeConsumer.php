@@ -13,13 +13,13 @@ abstract class BasicConsumeConsumer extends AbstractConsumer
 {
     protected function isMessageExists(): bool
     {
-        return count($this->getConnectionWrapper()->getChannel()->callbacks);
+        return $this->channel()->is_consuming();
     }
 
     public function stop()
     {
         try {
-            $this->getConnectionWrapper()->getChannel()->basic_cancel($this->getConsumerTag(), false, true);
+            $this->channel()->basic_cancel($this->getConsumerTag(), false, true);
         } catch (AMQPTimeoutException $e) {
             // TODO: Log
         }
@@ -33,7 +33,7 @@ abstract class BasicConsumeConsumer extends AbstractConsumer
     {
         parent::setupConsume();
         $oQueue=$this->getQueue();
-        $this->getConnectionWrapper()->getChannel()->basic_consume(
+        $this->channel()->basic_consume(
             $oQueue->getName(),
             $this->getConsumerTag(),
             false, // No local
@@ -53,6 +53,6 @@ abstract class BasicConsumeConsumer extends AbstractConsumer
      */
     protected function wait(array $waitTimeout)
     {
-        $this->getConnectionWrapper()->getChannel()->wait(null, false, $waitTimeout['seconds']);
+        $this->channel()->wait(null, false, $waitTimeout['seconds']);
     }
 }
