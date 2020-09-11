@@ -23,9 +23,9 @@ class Producer extends Connectable
      */
     private string $exchange;
 
-    public function __construct(string $type, string $exchange, string $connection, bool $autoReconnect = true, int $reconnectRetries = 6, int $reconnectDelay = 600000, ?string $connectionName = null)
+    public function __construct(string $type, string $exchange, string $connection)
     {
-        parent::__construct($connection, $autoReconnect, $reconnectRetries, $reconnectDelay, $connectionName);
+        parent::__construct($connection);
         $this->setType($type)->setExchange($exchange);
     }
 

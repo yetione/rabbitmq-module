@@ -6,6 +6,7 @@ namespace Yetione\RabbitMQ\DTO;
 use Yetione\DTO\DTOInterface;
 use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
+use Yetione\RabbitMQ\Constant\Connection;
 
 class ConnectionOptions implements DTOInterface
 {
@@ -15,14 +16,20 @@ class ConnectionOptions implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("insist")
      */
-    private $insist;
+    private bool $insist = false;
 
     /**
      * @var string
      * @Assert\Type(type="string")
+     * @Assert\Choice({
+     *     \Yetione\RabbitMQ\Constant\Connection::LOGIN_METHOD_PLAIN,
+     *     \Yetione\RabbitMQ\Constant\Connection::LOGIN_METHOD_RABBIT_CR_DEMO,
+     *     \Yetione\RabbitMQ\Constant\Connection::LOGIN_METHOD_AMQPPLAIN,
+     *     \Yetione\RabbitMQ\Constant\Connection::LOGIN_METHOD_EXTERNAL
+     * })
      * @SerializedName("login_method")
      */
-    private $loginMethod;
+    private string $loginMethod = Connection::LOGIN_METHOD_AMQPPLAIN;
 
     /**
      * @var null
@@ -37,7 +44,7 @@ class ConnectionOptions implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("locale")
      */
-    private $locale;
+    private string $locale = 'en_US';
 
     /**
      * @var float
@@ -45,7 +52,7 @@ class ConnectionOptions implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("connection_timeout")
      */
-    private $connectionTimeout;
+    private float $connectionTimeout = 3;
 
     /**
      * @var float
@@ -53,93 +60,60 @@ class ConnectionOptions implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("read_write_timeout")
      */
-    private $readWriteTimeout;
+    private float $readWriteTimeout = 3;
 
     /**
      * @var array|null
      * @Assert\Type(type={"array", "null"})
      * @SerializedName("context_options")
      */
-    private $contextOptions;
+    private ?array $contextOptions = null;
 
     /**
      * @var array|null
      * @Assert\Type(type={"array", "null"})
      * @SerializedName("context_params")
      */
-    private $contextParams;
+    private ?array $contextParams = null;
 
     /**
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("keepalive")
      */
-    private $keepalive;
+    private bool $keepalive = false;
 
     /**
      * @var int
      * @Assert\Type(type="int")
      * @SerializedName("heartbeat")
      */
-    private $heartbeat;
+    private int $heartbeat = 0;
 
     /**
      * @var float
      * @Assert\Type(type="float")
      * @SerializedName("channel_rpc_timeout")
      */
-    private $channelRpcTimeout;
+    private float $channelRpcTimeout = 0;
 
     /**
      * @var string|null
      * @Assert\Type(type={"string", "null"})
      * @SerializedName("ssl_protocol")
      */
-    private $sslProtocol;
+    private ?string $sslProtocol = null;
 
     /**
      * @var string
      * @Assert\Type(type="string")
-     * @Assert\Choice({\Yetione\RabbitMQ\Constant\Connection::TYPE_LAZY, \Yetione\RabbitMQ\Constant\Connection::TYPE_NORMAL})
+     * @Assert\Choice({
+     *     \Yetione\RabbitMQ\Constant\Connection::TYPE_LAZY,
+     *     \Yetione\RabbitMQ\Constant\Connection::TYPE_NORMAL
+     * })
      * @SerializedName("connection_type")
      */
-    private $connectionType;
-
-    /**
-     * Connection constructor.
-     * @param float $connectionTimeout
-     * @param float $readWriteTimeout
-     * @param bool $keepalive
-     * @param int $heartbeat
-     * @param bool $insist
-     * @param string $loginMethod
-     * @param string $locale
-     * @param array|null $contextOptions
-     * @param array|null $contextParams
-     * @param float $channelRpcTimeout
-     * @param string|null $sslProtocol
-     * @param string $connectionType
-     */
-    public function __construct(
-        float $connectionTimeout = 3.0, float $readWriteTimeout = 3.0, bool $keepalive = false, int $heartbeat = 0,
-        bool $insist = false, string $loginMethod = 'AMQPLAIN', string $locale = 'en_US', ?array $contextOptions = null,
-        ?array $contextParams = null, float $channelRpcTimeout = 0.0, ?string $sslProtocol = null, string $connectionType='normal'
-    )
-    {
-        $this->insist = $insist;
-        $this->loginMethod = $loginMethod;
-        $this->locale = $locale;
-        $this->connectionTimeout = $connectionTimeout;
-        $this->readWriteTimeout = $readWriteTimeout;
-        $this->contextOptions = $contextOptions;
-        $this->contextParams = $contextParams;
-        $this->keepalive = $keepalive;
-        $this->heartbeat = $heartbeat;
-        $this->channelRpcTimeout = $channelRpcTimeout;
-        $this->sslProtocol = $sslProtocol;
-        $this->loginResponse = null;
-        $this->connectionType = $connectionType;
-    }
+    private string $connectionType = Connection::TYPE_NORMAL;
 
     /**
      * @return bool
