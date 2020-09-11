@@ -45,14 +45,9 @@ abstract class Connectable implements DTOInterface
      */
     private ?string $connectionName;
 
-    public function __construct(string $connection, bool $autoReconnect=true, int $reconnectRetries=6, int $reconnectDelay=600000, ?string $connectionName=null)
+    public function __construct(string $connection)
     {
-        $this
-            ->setConnection($connection)
-            ->setConnectionName($connectionName)
-            ->setAutoReconnect($autoReconnect)
-            ->setReconnectRetries($reconnectRetries)
-            ->setReconnectDelay($reconnectDelay);
+        $this->setConnection($connection);
     }
 
     /**

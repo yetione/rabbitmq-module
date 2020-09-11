@@ -5,14 +5,17 @@ namespace Yetione\RabbitMQ\Connection;
 
 
 use Exception;
+use PhpAmqpLib\Connection\AbstractConnection;
+use PhpAmqpLib\Connection\AMQPLazyConnection;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Connection\Heartbeat\PCNTLHeartbeatSender;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use Yetione\DTO\DTO;
+use Yetione\RabbitMQ\Configs\ConnectionsConfig;
+use Yetione\RabbitMQ\Constant\Connection;
 use Yetione\RabbitMQ\DTO\ConnectionOptions;
 use Yetione\RabbitMQ\DTO\Node;
 use Yetione\RabbitMQ\Exception\MakeConnectionFailedException;
-use Yetione\RabbitMQ\Service\ConfigService;
 
 class ConnectionFactory
 {
@@ -21,11 +24,16 @@ class ConnectionFactory
 
     protected array $nodes;
 
-    protected ConfigService $configService;
+    protected ConnectionsConfig $config;
 
-    public function __construct(ConfigService $configService)
+    protected array $connectionTypesMap = [
+        Connection::TYPE_NORMAL => AMQPStreamConnection::class,
+        Connection::TYPE_LAZY => AMQPLazyConnection::class
+    ];
+
+    public function __construct(ConnectionsConfig $config)
     {
-        $this->configService = $configService;
+        $this->config = $config;
     }
 
     /**
@@ -51,14 +59,23 @@ class ConnectionFactory
     protected function createConnection(string $options): ConnectionInterface
     {
         /** @var ConnectionOptions $connectionOptions */
-        if (null === ($connectionOptions = $this->configService->connectionOptions()->get($options))) {
+        if (null === ($connectionOptions =
+                $this->config->config()->get(ConnectionsConfig::TYPE_CONNECTION_OPTIONS, collect())->get($options))) {
             throw new MakeConnectionFailedException(sprintf('Connection [%s] is missing', $options));
         }
         if (null === ($connectionOptions = DTO::toArray($connectionOptions))) {
             throw new MakeConnectionFailedException(sprintf('Connection [%s] is broken', $options));
         }
+        if (!isset($this->connectionTypesMap[$connectionOptions['connection_type']])
+            || !class_exists($this->connectionTypesMap[$connectionOptions['connection_type']])) {
+            throw new MakeConnectionFailedException(
+                sprintf('Connection type [%s] is not registered', $connectionOptions['connection_type'])
+            );
+        }
+        /** @var AbstractConnection|string $connectionClass */
+        $connectionClass = $this->connectionTypesMap[$connectionOptions['connection_type']];
         try {
-            $AMQPConnection = AMQPStreamConnection::create_connection($this->getNodes(), $connectionOptions);
+            $AMQPConnection = $connectionClass::create_connection($this->getNodes(), $connectionOptions);
         } catch (Exception $e) {
             throw new MakeConnectionFailedException($e->getMessage(), $e->getCode(), $e->getPrevious());
         }
@@ -76,7 +93,7 @@ class ConnectionFactory
         if (!isset($this->nodes)) {
             $this->nodes = [];
             /** @var Node $node */
-            foreach ($this->configService->nodes()->all() as $node) {
+            foreach ($this->config->config()->get(ConnectionsConfig::TYPE_NODES, collect())->all() as $node) {
                 if (null !== ($node = DTO::toArray($node))) {
                     $node['credentials']['user'] = $node['credentials']['username'];
                     $node = array_merge($node, $node['credentials']);
