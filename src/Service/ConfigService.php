@@ -2,107 +2,110 @@
 
 namespace Yetione\RabbitMQ\Service;
 
-use Yetione\DTO\Exception\SerializerException;
-use Yetione\DTO\Serializer;
+use Illuminate\Support\Collection;
+use Yetione\DTO\DTO;
 use OutOfBoundsException;
 use Yetione\RabbitMQ\DTO\ConnectionOptions;
 use Yetione\RabbitMQ\DTO\Credentials;
 use Yetione\RabbitMQ\DTO\Node;
 
 /**
- * TODO: Config provider
  * Class ConfigService
  * @package Yetione\RabbitMQ\Service
  */
 class ConfigService
 {
+    public const TYPE_CREDENTIALS='credentials';
+    public const TYPE_NODES='nodes';
+    public const TYPE_CONNECTION_OPTIONS='connection_options';
+
+    /** @var Collection[]  */
+    protected array $configs;
+
+
     /**
      * @var Credentials[]
      */
-    private array $credentials = [];
+    private array $credentials;
 
     /**
      * @var Node[]
      */
-    private array $nodes = [];
+    private array $nodes;
 
     /**
      * @var ConnectionOptions[]
      */
-    private array $connectionsOptions = [];
+    private array $connectionsOptions;
 
     /**
      * @var bool
      */
     private bool $configLoaded = false;
 
-    /**
-     * @var Serializer
-     */
-    private Serializer $serializer;
+    protected array $configTypes = [
+        self::TYPE_CREDENTIALS => Credentials::class,
+        self::TYPE_NODES => Node::class,
+        self::TYPE_CONNECTION_OPTIONS => ConnectionOptions::class
+    ];
 
     protected ConfigProviderInterface $configProvider;
 
-    public function __construct(Serializer $serializer, ConfigProviderInterface $configProvider)
+    public function __construct(ConfigProviderInterface $configProvider)
     {
-        $this->serializer = $serializer;
         $this->configProvider = $configProvider;
     }
 
+    /**
+     * Жуть
+     * TODO: Refactor
+     */
     protected function loadConfig()
     {
-        $aRabbitData = $this->configProvider->read();
-
-        if (isset($aRabbitData['credentials'])) {
-            foreach ($aRabbitData['credentials'] as $sName => $aData) {
-                try {
-                    $oCredentials = $this->serializer->fromArray($aData, Credentials::class);
-                } catch (SerializerException $e) {
-                    continue;
-                }
-                $this->credentials[$sName] = $oCredentials;
-            }
-        }
-        if (isset($aRabbitData['connection_options'])) {
-            foreach ($aRabbitData['connection_options'] as $sName => $aData) {
-                try {
-                    $oConnectionOptions = $this->serializer->fromArray($aData, ConnectionOptions::class);
-                } catch (SerializerException $e) {
-                    continue;
-                }
-                $this->connectionsOptions[$sName] = $oConnectionOptions;
-            }
-        }
-
-        if (isset($aRabbitData['nodes'])) {
-            foreach ($aRabbitData['nodes'] as $aData) {
-                if (isset($aData['credentials'])) {
-                    if (!isset($aRabbitData['credentials'][$aData['credentials']])) {
-                        continue;
+        if (!isset($this->configs)) {
+            $this->configs = [];
+            $configData = $this->configProvider->read();
+            foreach ($this->configTypes as $type=>$itemClass) {
+                if (isset($configData[$type])) {
+                    $this->configs[$type] = collect([]);
+                    foreach ($configData[$type] as $key=>$value) {
+                        if (self::TYPE_NODES === $type) { // TODO: Refactor
+                            if (null === $this->configs[self::TYPE_CREDENTIALS]->get($value['credentials'])) {
+                                continue;
+                            }
+                            $value['credentials'] = $this->configs[self::TYPE_CREDENTIALS][$value['credentials']];
+                        }
+                        if (null !== ($object = DTO::fromArray($value, $itemClass))) {
+                            $this->configs[$type]->put($key, $object);
+                        }
                     }
-                    $aData['credentials'] = $aRabbitData['credentials'][$aData['credentials']];
                 }
-                try {
-                    $oNode = $this->serializer->fromArray($aData, Node::class);
-                } catch (SerializerException $e) {
-                    continue;
-                }
-                $this->nodes[] = $oNode;
             }
         }
-        $this->configLoaded = true;
+    }
+
+    public function credentials(): Collection
+    {
+        return $this->configs[self::TYPE_CREDENTIALS] ?? collect([]);
+    }
+
+    public function connectionOptions(): Collection
+    {
+        return $this->configs[self::TYPE_CONNECTION_OPTIONS] ?? collect([]);
+    }
+
+    public function nodes(): Collection
+    {
+        return $this->configs[self::TYPE_NODES] ?? collect([]);
     }
 
     /**
      * @param string|null $sName
      * @return Credentials|Credentials[]
-     * @throws OutOfBoundsException
      */
-    public function getCredentials(?string $sName = null)
+    public function getCredentials(?string $sName=null)
     {
-        if (!$this->configLoaded) {
-            $this->loadConfig();
-        }
+        $this->loadConfig();
         if (null === $sName) {
             return $this->credentials;
         }

@@ -9,8 +9,6 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 class ConnectionOptions implements DTOInterface
 {
-    const CONNECTION_LAZY = 'lazy';
-    const CONNECTION_NORMAL = 'normal';
 
     /**
      * @var bool
@@ -102,7 +100,7 @@ class ConnectionOptions implements DTOInterface
     /**
      * @var string
      * @Assert\Type(type="string")
-     * @Assert\Choice({\Yetione\RabbitMQ\DTO\ConnectionOptions::CONNECTION_LAZY, \Yetione\RabbitMQ\DTO\ConnectionOptions::CONNECTION_NORMAL})
+     * @Assert\Choice({\Yetione\RabbitMQ\Constant\Connection::TYPE_LAZY, \Yetione\RabbitMQ\Constant\Connection::TYPE_NORMAL})
      * @SerializedName("connection_type")
      */
     private $connectionType;

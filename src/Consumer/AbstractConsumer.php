@@ -7,7 +7,6 @@ namespace Yetione\RabbitMQ\Consumer;
 use DateTime;
 use InvalidArgumentException;
 use PhpAmqpLib\Exception\AMQPEmptyDeliveryTagException;
-use Yetione\DTO\Serializer;
 use ErrorException;
 use Exception;
 use PhpAmqpLib\Channel\AMQPChannel;
@@ -15,7 +14,6 @@ use PhpAmqpLib\Exception\AMQPOutOfBoundsException;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Message\AMQPMessage;
-use Yetione\Json\Json;
 use Yetione\RabbitMQ\Connection\ConnectionInterface;
 use Yetione\RabbitMQ\Connection\InteractsWithConnection;
 use Yetione\RabbitMQ\Constant\Consumer;
@@ -32,9 +30,7 @@ use Yetione\RabbitMQ\Event\OnConsumeEvent;
 use Yetione\RabbitMQ\Event\OnConsumerFinish;
 use Yetione\RabbitMQ\Event\OnConsumerStart;
 use Yetione\RabbitMQ\Event\OnIdleEvent;
-use Yetione\RabbitMQ\Exception\ConnectionException;
 use Yetione\RabbitMQ\Exception\StopConsumerException;
-use Yetione\RabbitMQ\Service\RabbitMQService;
 use Throwable;
 
 /**
@@ -52,10 +48,6 @@ abstract class AbstractConsumer implements ConsumerInterface
     protected string $memoryLimit = '6144M';
 
     protected int $maxExecutionTime = 0;
-
-    protected string $connectionOptionsName = 'consumer';
-
-    protected string $connectionName = 'default_consumer';
 
     protected int $maxMessages = 0;
 
@@ -85,23 +77,17 @@ abstract class AbstractConsumer implements ConsumerInterface
 
     protected array $metrics = [];
 
-    protected Serializer $serializer;
-
     protected EventDispatcherInterface $eventDispatcher;
 
     /**
      * AbstractConsumer constructor.
-     * @param RabbitMQService $rabbitMQService
-     * @param Serializer $serializer
+     * @param ConnectionInterface $connection
      * @param EventDispatcherInterface $eventDispatcher
-     * @throws ConnectionException
      */
-    public function __construct(RabbitMQService $rabbitMQService, Serializer $serializer, EventDispatcherInterface $eventDispatcher)
+    public function __construct(ConnectionInterface $connection, EventDispatcherInterface $eventDispatcher)
     {
-        $this->rabbitMQService = $rabbitMQService;
-        $this->serializer = $serializer;
         $this->eventDispatcher = $eventDispatcher;
-        $this->setConnectionWrapper($this->createConnection());
+        $this->setConnectionWrapper($connection);
     }
 
     /**
@@ -767,86 +753,5 @@ abstract class AbstractConsumer implements ConsumerInterface
     {
         $this->memoryLimit = $memoryLimit;
         return $this;
-    }
-
-    /**
-     * @param array $options
-     * @return array
-     */
-    protected function getLoggerContext(array $options=[]): array
-    {
-        $aResult = [];
-        $oQueue = $this->getQueue();
-        $aConsumer = [
-            'connection_name'=>$this->getConnectionName(),
-            'connection_options_name'=>$this->getConnectionOptionsName(),
-            'consumed_messages'=>$this->consumedMessages
-        ];
-        try {
-            $aConsumer['tag'] = $this->getConsumerTag();
-        } catch (Exception | Throwable $e) {
-        }
-        try {
-            $aConsumer['queue'] = $this->serializer->toArray($oQueue);
-            if (null !== ($oExchange=$this->getExchange())) {
-                $aConsumer['exchange'] = $this->serializer->toArray($oExchange);
-            }
-            if (null !== ($oBinding=$this->getBinding())) {
-                $aConsumer['binding'] = $this->serializer->toArray($oBinding);
-            }
-        } catch (Exception | Throwable $e) {
-        }
-
-        if (isset($this->metrics['start_date'])) {
-            $aConsumer['start_date'] = $this->metrics['start_date'];
-        }
-        if (isset($this->metrics['end_date'])) {
-            $aConsumer['end_date'] = $this->metrics['end_date'];
-        }
-        if (isset($this->metrics['execution_time'])) {
-            $aConsumer['execution_time'] = $this->metrics['execution_time'];
-        } elseif (isset($this->metrics['start_time'], $this->metrics['end_time'])) {
-            $aConsumer['execution_time'] = $this->metrics['end_time'] - $this->metrics['start_time'];
-        }
-        if (isset($this->metrics['connection_class'])) {
-            $aConsumer['connection_class'] = $this->metrics['connection_class'];
-        }
-        if (isset($options['result_code'])) {
-            $aConsumer['result_code'] = $options['result_code'];
-            unset($options['result_code']);
-        }
-        if (isset($options['message'])) {
-            $message = $options['message'];
-            if ($message instanceof AMQPMessage) {
-                $aResult['message'] = [
-                    'body'=>$message->getBody(),
-                    'body_size'=>$message->getBodySize(),
-                    'properties'=>$message->get_properties(),
-                    'encoding'=>$message->getContentEncoding(),
-                    'delivery_info'=>$message->delivery_info
-                ];
-            } else {
-                $sBody = is_array($message) ? Json::encode($message) : (string) $message;
-                $aResult['message'] = [
-                    'body'=>$sBody,
-                    'body_size'=>strlen($sBody)
-                ];
-            }
-            unset($options['message']);
-        }
-        if (isset($options['error'])) {
-            $error = $options['error'];
-            if ($error instanceof Throwable) {
-//                $aResult['error'] = ContextFormatter::formatException($error);
-                // TODO: Format error
-            }
-            unset($options['error']);
-        }
-        if (isset($options['wait_timeout'])) {
-            $aResult['wait_timeout'] = $options['wait_timeout'];
-            unset($options['wait_timeout']);
-        }
-        $aResult['consumer'] = $aConsumer;
-        return array_merge($options, $aResult);
     }
 }

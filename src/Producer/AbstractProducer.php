@@ -6,16 +6,14 @@ namespace Yetione\RabbitMQ\Producer;
 
 use PhpAmqpLib\Message\AMQPMessage;
 use Throwable;
-use Yetione\Json\Json;
+use Yetione\RabbitMQ\Connection\ConnectionInterface;
 use Yetione\RabbitMQ\Connection\InteractsWithConnection;
 use Yetione\RabbitMQ\DTO\Exchange;
 use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterPublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforePublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnErrorPublishingMessageEvent;
-use Yetione\RabbitMQ\Exception\ConnectionException;
 use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
-use Yetione\RabbitMQ\Service\RabbitMQService;
 
 
 /**
@@ -28,10 +26,6 @@ abstract class AbstractProducer implements ProducerInterface
     use InteractsWithConnection;
 
     protected MessageFactoryInterface $messageFactory;
-
-    protected string $connectionOptionsName = 'producer';
-
-    protected string $connectionName = 'default_producer';
 
     protected Exchange $exchange;
 
@@ -47,15 +41,13 @@ abstract class AbstractProducer implements ProducerInterface
 
     /**
      * AbstractProducer constructor.
-     * @param RabbitMQService $rabbitMQService
+     * @param ConnectionInterface $connection
      * @param EventDispatcherInterface $eventDispatcher
-     * @throws ConnectionException
      */
-    public function __construct(RabbitMQService $rabbitMQService, EventDispatcherInterface $eventDispatcher)
+    public function __construct(ConnectionInterface $connection, EventDispatcherInterface $eventDispatcher)
     {
-        $this->rabbitMQService = $rabbitMQService;
         $this->eventDispatcher = $eventDispatcher;
-        $this->setConnectionWrapper($this->createConnection());
+        $this->setConnectionWrapper($connection);
     }
 
     protected function beforePublish()
@@ -162,34 +154,4 @@ abstract class AbstractProducer implements ProducerInterface
         $this->retries = $retries;
         return $this;
     }
-
-    public function getLoggerContext($message=null): array
-    {
-        $aResult = [
-            'producer'=>[
-                'exchange_name'=>$this->getExchange()->getName(),
-                'exchange_type'=>$this->getExchange()->getType(),
-                'connection_class'=>get_class($this->getConnectionWrapper()->getConnection()),
-                'connection_name'=>$this->getConnectionName(),
-                'connection_options'=>$this->getConnectionOptionsName(),
-                'message_factory'=>get_class($this->getMessageFactory())
-            ]
-        ];
-        if ($message instanceof AMQPMessage) {
-            $aResult['message'] = [
-                'body'=>$message->getBody(),
-                'body_size'=>$message->getBodySize(),
-                'properties'=>$message->get_properties(),
-                'encoding'=>$message->getContentEncoding()
-            ];
-        } elseif (is_array($message) || is_string($message)) {
-            $sBody = is_array($message) ?  Json::encode($message) : $message;
-            $aResult['message'] = [
-                'body'=>$sBody,
-                'body_size'=>strlen($sBody)
-            ];
-        }
-        return $aResult;
-    }
-
 }

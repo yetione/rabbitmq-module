@@ -4,7 +4,9 @@
 namespace Yetione\RabbitMQ\Exception;
 
 
-class ConnectionException extends \Exception
+use Exception;
+
+class ConnectionException extends Exception
 {
 
 }
