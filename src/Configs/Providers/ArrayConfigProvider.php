@@ -10,6 +10,7 @@ class ArrayConfigProvider implements ConfigProviderInterface
 
     public function __construct(?array $config)
     {
+        $e='fasd';
         $this->config = null === $config ? [] : $config;
     }
 
