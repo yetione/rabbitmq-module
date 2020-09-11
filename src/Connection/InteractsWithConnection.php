@@ -5,8 +5,6 @@ namespace Yetione\RabbitMQ\Connection;
 
 
 use PhpAmqpLib\Channel\AMQPChannel;
-use Yetione\RabbitMQ\Exception\ConnectionException;
-use Yetione\RabbitMQ\Service\RabbitMQService;
 
 trait InteractsWithConnection
 {
@@ -16,29 +14,11 @@ trait InteractsWithConnection
 
     protected int $reconnectRetries = 5;
 
-    protected string $connectionOptionsName;
-
-    protected string $connectionName;
-
-    protected RabbitMQService $rabbitMQService;
-
     /**
      * Ждем пол секунды перед реконнектом
      * @var int
      */
     protected int $waitBeforeReconnect = 500000;
-
-    /**
-     * @return ConnectionInterface
-     * @throws ConnectionException
-     */
-    protected function createConnection(): ConnectionInterface
-    {
-        if (null === ($con = $this->rabbitMQService->getConnection($this->connectionName, $this->connectionOptionsName))) {
-            throw new ConnectionException("Cannot create connection {$this->connectionName} with option {$this->connectionOptionsName}.");
-        }
-        return $con;
-    }
 
     protected function maybeReconnect(): void
     {
@@ -128,28 +108,6 @@ trait InteractsWithConnection
     public function setWaitBeforeReconnect(int $waitBeforeReconnect): self
     {
         $this->waitBeforeReconnect = $waitBeforeReconnect;
-        return $this;
-    }
-
-    public function getConnectionName(): string
-    {
-        return $this->connectionName;
-    }
-
-    public function setConnectionName(string $connectionName): self
-    {
-        $this->connectionName = $connectionName;
-        return $this;
-    }
-
-    public function getConnectionOptionsName(): string
-    {
-        return $this->connectionOptionsName;
-    }
-
-    public function setConnectionOptionsName(string $connectionOptionsName): self
-    {
-        $this->connectionOptionsName = $connectionOptionsName;
         return $this;
     }
 }

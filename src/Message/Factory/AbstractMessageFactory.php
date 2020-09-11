@@ -16,17 +16,17 @@ abstract class AbstractMessageFactory implements MessageFactoryInterface
 
     protected array $defaultOptions = [];
 
-    protected array $defaultProperties = [];
+    protected array $defaultProperties = [
+        'content_type'=>'text/plain',
+        'delivery_mode'=>AMQPMessage::DELIVERY_MODE_PERSISTENT
+    ];
 
     protected MessageBuilder $messageBuilder;
 
     public function __construct(array $defaultOptions=[], array $defaultProperties=[])
     {
         $this->setDefaultOptions(array_merge($this->defaultOptions, $defaultOptions));
-        $this->setDefaultProperties(array_merge($this->defaultProperties, [
-            'content_type'=>$this->getContentType(),
-            'delivery_mode'=>$this->getDeliveryMode()
-        ], $defaultProperties));
+        $this->setDefaultProperties(array_merge($this->defaultProperties, $defaultProperties));
     }
 
     public function getMessageBuilder(): MessageBuilder
