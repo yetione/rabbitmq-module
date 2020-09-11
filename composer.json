@@ -18,5 +18,14 @@
     },
     "autoload": {
         "psr-4": { "Yetione\\RabbitMQ\\": "src/"}
-    }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../dtoable",
+            "options": {
+                "symlink": false
+            }
+        }
+    ]
 }

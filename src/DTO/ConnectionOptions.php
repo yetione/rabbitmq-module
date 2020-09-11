@@ -6,10 +6,12 @@ namespace Yetione\RabbitMQ\DTO;
 use Yetione\DTO\DTOInterface;
 use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
+use Yetione\DTO\Support\MagicSetter;
 use Yetione\RabbitMQ\Constant\Connection;
 
 class ConnectionOptions implements DTOInterface
 {
+    use MagicSetter;
 
     /**
      * @var bool
