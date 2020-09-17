@@ -15,28 +15,28 @@ abstract class Connectable implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("auto_reconnect")
      */
-    private bool $autoReconnect = true;
+    protected bool $autoReconnect = true;
 
     /**
      * @var int
      * @Assert\Type(type="int")
      * @SerializedName("reconnect_retries")
      */
-    private int $reconnectRetries = 5;
+    protected int $reconnectRetries = 5;
 
     /**
      * @var int
      * @Assert\Type(type="int")
      * @SerializedName("reconnect_delay")
      */
-    private int $reconnectDelay = 500000;
+    protected int $reconnectDelay = 500000;
 
     /**
      * @var string
      * @Assert\Type(type="string")
      * @SerializedName("connection")
      */
-    private string $connection;
+    protected string $connection;
 
     public function __construct(string $connection)
     {

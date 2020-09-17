@@ -14,14 +14,14 @@ class Producer extends Connectable
      * @Assert\Type(type="string")
      * @SerializedName("type")
      */
-    private string $type;
+    protected string $type;
 
     /**
      * @var string
      * @Assert\Type(type="string")
      * @SerializedName("exchange")
      */
-    private string $exchange;
+    protected string $exchange;
 
     public function __construct(string $type, string $exchange, string $connection)
     {
