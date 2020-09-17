@@ -44,6 +44,9 @@ abstract class Binding implements DTOInterface
     private ?int $ticket = null;
 
     /**
+     * Если true - то binding считается уже объявленным ранее, иначе будет сделана попытка
+     * объявления.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("declare")

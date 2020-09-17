@@ -102,6 +102,9 @@ class Exchange implements DTOInterface
     private ?int $ticket = null;
 
     /**
+     * Если true - то exchange считается уже объявленным ранее, иначе будет сделана попытка
+     * объявления
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("declare")

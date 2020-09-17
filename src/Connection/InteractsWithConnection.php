@@ -62,6 +62,7 @@ trait InteractsWithConnection
     protected function closeConnection(): self
     {
         if ($this->getConnectionWrapper()->isConnectionOpen()) {
+            $this->getConnectionWrapper()->unregisterHeartbeat();
             $this->getConnectionWrapper()->close();
         }
         return $this;

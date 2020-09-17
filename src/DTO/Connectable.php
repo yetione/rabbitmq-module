@@ -11,6 +11,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 abstract class Connectable implements DTOInterface
 {
     /**
+     * Восстанавливать или нет соединение с брокером сообщений автоматически, если текущее
+     * соединение оборвалось.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("auto_reconnect")
@@ -18,6 +21,8 @@ abstract class Connectable implements DTOInterface
     private bool $autoReconnect = true;
 
     /**
+     * Максимальное число попыток восстановления соединения.
+     *
      * @var int
      * @Assert\Type(type="int")
      * @SerializedName("reconnect_retries")
@@ -25,6 +30,9 @@ abstract class Connectable implements DTOInterface
     private int $reconnectRetries = 5;
 
     /**
+     * Пауза между попытками восстановить соединение.
+     * Измеряется в микросекундах (1/1000000 секунды).
+     *
      * @var int
      * @Assert\Type(type="int")
      * @SerializedName("reconnect_delay")
@@ -32,6 +40,8 @@ abstract class Connectable implements DTOInterface
     private int $reconnectDelay = 500000;
 
     /**
+     * Имя соединения.
+     *
      * @var string
      * @Assert\Type(type="string")
      * @SerializedName("connection")

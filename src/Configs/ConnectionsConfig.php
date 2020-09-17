@@ -40,10 +40,12 @@ class ConnectionsConfig extends AbstractConfig
             foreach ($config[$type] as $key=>$value) {
                 switch ($type) {
                     case self::TYPE_NODES:
-                        if (isset($config[self::TYPE_CREDENTIALS],
+                        if (!isset($config[self::TYPE_CREDENTIALS],
                             $config[self::TYPE_CREDENTIALS][$value['credentials']])) {
-                            $value['credentials'] = $config[self::TYPE_CREDENTIALS][$value['credentials']];
+                            // TODO: Log or error
+                            continue 2; // Skip node without or undefined credentials
                         }
+                        $value['credentials'] = $config[self::TYPE_CREDENTIALS][$value['credentials']];
                         break;
 //                    case self::TYPE_CONNECTIONS:
 //                        $value = array_merge($defaultConnectionParameters, $value);

@@ -14,6 +14,8 @@ class Connection implements DTOInterface
     use MagicSetter;
 
     /**
+     * Хз что это. Вроде как deprecated, но подтверждения не нашел.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("insist")
@@ -21,6 +23,8 @@ class Connection implements DTOInterface
     private bool $insist = false;
 
     /**
+     * Метод авторизации. Тоже доки толком не нашел.
+     *
      * @var string
      * @Assert\Type(type="string")
      * @Assert\Choice({
@@ -34,6 +38,8 @@ class Connection implements DTOInterface
     private string $loginMethod = ConnectionEnum::LOGIN_METHOD_AMQPPLAIN;
 
     /**
+     * Deprecated штука
+     *
      * @var null
      * @Assert\Type(type="null")
      * @SerializedName("login_response")
@@ -41,6 +47,8 @@ class Connection implements DTOInterface
     private $loginResponse = null;
 
     /**
+     * Локализация ответов.
+     *
      * @var string
      * @Assert\Type(type="string")
      * @Assert\NotBlank()
@@ -49,6 +57,31 @@ class Connection implements DTOInterface
     private string $locale = 'en_US';
 
     /**
+     * Timeout на операции чтения.
+     * Только для SOCKET соединений.
+     *
+     * @var float
+     * @Assert\Type(type="float")
+     * @Assert\NotBlank()
+     * @SerializedName("read_timeout")
+     */
+    private float $readTimeout = 3.0;
+
+    /**
+     * Timeout на операции записи.
+     * Только для SOCKET соединений.
+     *
+     * @var float
+     * @Assert\Type(type="float")
+     * @Assert\NotBlank()
+     * @SerializedName("write_timeout")
+     */
+    private float $writeTimeout = 3.0;
+
+    /**
+     * Timeout на установку соединения.
+     * Только для STREAM соединений.
+     *
      * @var float
      * @Assert\Type(type="float")
      * @Assert\NotBlank()
@@ -57,6 +90,27 @@ class Connection implements DTOInterface
     private float $connectionTimeout = 3.0;
 
     /**
+     * Только для STREAM соединений.
+     *
+     * @var array|null
+     * @Assert\Type(type={"array", "null"})
+     * @SerializedName("context_options")
+     */
+    private ?array $contextOptions = null;
+
+    /**
+     * Только для STREAM соединений.
+     *
+     * @var array|null
+     * @Assert\Type(type={"array", "null"})
+     * @SerializedName("context_params")
+     */
+    private ?array $contextParams = null;
+
+    /**
+     * Timeout на операции чтения/записи.
+     * Только для STREAM соединений.
+     *
      * @var float
      * @Assert\Type(type="float")
      * @Assert\NotBlank()
@@ -65,18 +119,13 @@ class Connection implements DTOInterface
     private float $readWriteTimeout = 130.0;
 
     /**
-     * @var array|null
-     * @Assert\Type(type={"array", "null"})
-     * @SerializedName("context_options")
+     * Только для STREAM соединений.
+     *
+     * @var string|null
+     * @Assert\Type(type={"string", "null"})
+     * @SerializedName("ssl_protocol")
      */
-    private ?array $contextOptions = null;
-
-    /**
-     * @var array|null
-     * @Assert\Type(type={"array", "null"})
-     * @SerializedName("context_params")
-     */
-    private ?array $contextParams = null;
+    private ?string $sslProtocol = null;
 
     /**
      * @var bool
@@ -100,13 +149,18 @@ class Connection implements DTOInterface
     private float $channelRpcTimeout = 0;
 
     /**
-     * @var string|null
-     * @Assert\Type(type={"string", "null"})
-     * @SerializedName("ssl_protocol")
+     * Опции для создания SSL контекста.
+     * Только для STREAM соединений.
+     *
+     * @var array
+     * @Assert\Type(type="array")
+     * @SerializedName("ssl_options")
      */
-    private ?string $sslProtocol = null;
+    private array $sslOptions = [];
 
     /**
+     * Тип соединения
+     *
      * @var string
      * @Assert\Type(type="string")
      * @SerializedName("connection_type")
@@ -146,38 +200,6 @@ class Connection implements DTOInterface
     }
 
     /**
-     * @return float
-     */
-    public function getConnectionTimeout(): float
-    {
-        return $this->connectionTimeout;
-    }
-
-    /**
-     * @return float
-     */
-    public function getReadWriteTimeout(): float
-    {
-        return $this->readWriteTimeout;
-    }
-
-    /**
-     * @return array|null
-     */
-    public function getContextOptions(): ?array
-    {
-        return $this->contextOptions;
-    }
-
-    /**
-     * @return array|null
-     */
-    public function getContextParams(): ?array
-    {
-        return $this->contextParams;
-    }
-
-    /**
      * @return resource|null
      */
     public function getContext()
@@ -213,6 +235,62 @@ class Connection implements DTOInterface
     }
 
     /**
+     * @return string
+     */
+    public function getConnectionType(): string
+    {
+        return $this->connectionType;
+    }
+
+    /**
+     * @return float
+     */
+    public function getReadTimeout(): float
+    {
+        return $this->readTimeout;
+    }
+
+    /**
+     * @return float
+     */
+    public function getWriteTimeout(): float
+    {
+        return $this->writeTimeout;
+    }
+
+    /**
+     * @return float
+     */
+    public function getConnectionTimeout(): float
+    {
+        return $this->connectionTimeout;
+    }
+
+    /**
+     * @return array|null
+     */
+    public function getContextOptions(): ?array
+    {
+        return $this->contextOptions;
+    }
+
+    /**
+     * @return array|null
+     */
+    public function getContextParams(): ?array
+    {
+        return $this->contextParams;
+    }
+
+    /**
+     * @return float
+     */
+    public function getReadWriteTimeout(): float
+    {
+        return $this->readWriteTimeout;
+    }
+
+    /**
      * @return string|null
      */
     public function getSslProtocol(): ?string
@@ -221,10 +299,10 @@ class Connection implements DTOInterface
     }
 
     /**
-     * @return string
+     * @return array
      */
-    public function getConnectionType(): string
+    public function getSslOptions(): array
     {
-        return $this->connectionType;
+        return $this->sslOptions;
     }
 }

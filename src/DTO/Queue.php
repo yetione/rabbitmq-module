@@ -98,6 +98,9 @@ class Queue implements DTOInterface
     private ?int $ticket = null;
 
     /**
+     * Если true - то queue считается уже объявленным ранее, иначе будет сделана попытка
+     * объявления.
+     *
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("declare")

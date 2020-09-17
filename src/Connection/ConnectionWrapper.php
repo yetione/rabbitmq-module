@@ -7,6 +7,7 @@ namespace Yetione\RabbitMQ\Connection;
 use Exception;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AbstractConnection;
+use PhpAmqpLib\Connection\Heartbeat\PCNTLHeartbeatSender;
 use PhpAmqpLib\Exception\AMQPTimeoutException;
 use Throwable;
 use Yetione\RabbitMQ\DTO\ExchangeBinding;
@@ -29,6 +30,8 @@ class ConnectionWrapper implements ConnectionInterface
 
     protected array $declaredExchangeBindings = [];
 
+    protected ?PCNTLHeartbeatSender $heartbeatSender = null;
+
     /**
      * Пауза в пол секунды перед реконнектом
      * Microseconds (1/1000000 of sec) before reconnect
@@ -39,6 +42,7 @@ class ConnectionWrapper implements ConnectionInterface
     public function __construct(AbstractConnection $connection)
     {
         $this->setConnection($connection);
+        $this->registerHeartbeat();
     }
 
     public function getChannel(bool $createNew=false): AMQPChannel
@@ -61,6 +65,31 @@ class ConnectionWrapper implements ConnectionInterface
     public function isChannelOpen(): bool
     {
         return null !== $this->channel && $this->getChannel()->is_open();
+    }
+
+    public function registerHeartbeat(): bool
+    {
+        if (!$this->isHeartbeatRegister() && 0 < $this->getConnection()->getHeartbeat()) {
+            $this->setHeartbeatSender(new PCNTLHeartbeatSender($this->getConnection()));
+            $this->getHeartbeatSender()->register();
+            return true;
+        }
+        return false;
+    }
+
+    public function unregisterHeartbeat(): bool
+    {
+        if ($this->isHeartbeatRegister()) {
+            $this->getHeartbeatSender()->unregister();
+            $this->setHeartbeatSender(null);
+            return true;
+        }
+        return false;
+    }
+
+    public function isHeartbeatRegister(): bool
+    {
+        return isset($this->heartbeatSender) && null !== $this->heartbeatSender;
     }
 
     /**
@@ -128,6 +157,7 @@ class ConnectionWrapper implements ConnectionInterface
         if ($this->isChannelOpen()) {
             $this->closeChannel();
         }
+        $this->unregisterHeartbeat();
         $this->closeConnection();
         $this->resetDeclaredData();
         return $this;
@@ -137,6 +167,7 @@ class ConnectionWrapper implements ConnectionInterface
     {
         if (!$this->isConnectionOpen()) {
             $this->getConnection()->reconnect();
+            $this->registerHeartbeat();
             if (!$this->isChannelOpen()) {
                 $this->setChannel($this->createChannel());
             }
@@ -147,11 +178,13 @@ class ConnectionWrapper implements ConnectionInterface
     public function reconnect(): self
     {
         $this->closeChannel();
+        $this->unregisterHeartbeat();
         $this->resetDeclaredData();
         if ($this->getWaitBeforeReconnect() > 0) {
             usleep($this->getWaitBeforeReconnect());
         }
         $this->getConnection()->reconnect();
+        $this->registerHeartbeat();
         $this->setChannel($this->createChannel());
         return $this;
     }
@@ -391,6 +424,24 @@ class ConnectionWrapper implements ConnectionInterface
     public function setWaitBeforeReconnect(int $waitBeforeReconnect): ConnectionInterface
     {
         $this->waitBeforeReconnect = $waitBeforeReconnect;
+        return $this;
+    }
+
+    /**
+     * @return PCNTLHeartbeatSender|null
+     */
+    public function getHeartbeatSender(): ?PCNTLHeartbeatSender
+    {
+        return $this->heartbeatSender;
+    }
+
+    /**
+     * @param PCNTLHeartbeatSender|null $heartbeatSender
+     * @return ConnectionWrapper
+     */
+    public function setHeartbeatSender(?PCNTLHeartbeatSender $heartbeatSender): ConnectionWrapper
+    {
+        $this->heartbeatSender = $heartbeatSender;
         return $this;
     }
 }

@@ -63,4 +63,10 @@ interface ConnectionInterface
 
     public function setWaitBeforeReconnect(int $waitBeforeReconnect): ConnectionInterface;
 
+    public function registerHeartbeat(): bool;
+
+    public function unregisterHeartbeat(): bool;
+
+    public function isHeartbeatRegister(): bool;
+
 }
