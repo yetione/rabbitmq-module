@@ -6,18 +6,11 @@ namespace Yetione\RabbitMQ\Configs;
 
 use Illuminate\Support\Collection;
 use Yetione\DTO\DTO;
-use Yetione\RabbitMQ\Configs\Providers\ConfigProviderInterface;
 use Yetione\RabbitMQ\DTO\Producer;
 
 class ProducersConfig extends AbstractConfig
 {
-    protected DefaultConfig $defaultConfig;
-
-    public function __construct(DefaultConfig $defaultConfig, ConfigProviderInterface $configProvider)
-    {
-        $this->defaultConfig = $defaultConfig;
-        parent::__construct($configProvider);
-    }
+    use WithDefaultConfig;
 
     protected function parseConfig(): Collection
     {
