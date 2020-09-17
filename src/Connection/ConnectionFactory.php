@@ -15,7 +15,9 @@ use Yetione\RabbitMQ\Configs\ConnectionsConfig;
 use Yetione\RabbitMQ\Constant\Connection as ConnectionEnum;
 use Yetione\RabbitMQ\DTO\Connection;
 use Yetione\RabbitMQ\DTO\Node;
+use Yetione\RabbitMQ\Exception\InvalidConnectionTypeException;
 use Yetione\RabbitMQ\Exception\MakeConnectionFailedException;
+use PhpAmqpLib\Connection\AbstractConnection as AMQPAbstractConnection;
 
 class ConnectionFactory
 {
@@ -34,6 +36,17 @@ class ConnectionFactory
     public function __construct(ConnectionsConfig $config)
     {
         $this->config = $config;
+    }
+
+    public function addConnectionType(string $type, string $connectionClass)
+    {
+        if (!class_exists($connectionClass) || is_subclass_of($connectionClass, AMQPAbstractConnection::class)) {
+            throw new InvalidConnectionTypeException(
+                sprintf('Connection type\'s [%s] class [%s] must exists and extend [%s]',
+                    $type, $connectionClass, AMQPAbstractConnection::class)
+            );
+        }
+        $this->connectionTypesMap[$type] = $connectionClass;
     }
 
     /**
