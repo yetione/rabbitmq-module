@@ -20,6 +20,7 @@ class Exchange implements DTOInterface
 
     /**
      * @var string
+     * @Assert\Type(type="string")
      * @Assert\Choice({
      *     \Yetione\RabbitMQ\Constant\Echange::TYPE_DIRECT,
      *     \Yetione\RabbitMQ\Constant\Echange::TYPE_TOPIC,
