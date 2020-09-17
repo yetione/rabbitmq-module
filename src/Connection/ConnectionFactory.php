@@ -6,13 +6,10 @@ namespace Yetione\RabbitMQ\Connection;
 
 use Exception;
 use PhpAmqpLib\Connection\AbstractConnection;
-use PhpAmqpLib\Connection\AMQPLazyConnection;
-use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Connection\Heartbeat\PCNTLHeartbeatSender;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use Yetione\DTO\DTO;
 use Yetione\RabbitMQ\Configs\ConnectionsConfig;
-use Yetione\RabbitMQ\Constant\Connection as ConnectionEnum;
 use Yetione\RabbitMQ\DTO\Connection;
 use Yetione\RabbitMQ\DTO\Node;
 use Yetione\RabbitMQ\Exception\InvalidConnectionTypeException;
@@ -28,17 +25,23 @@ class ConnectionFactory
 
     protected ConnectionsConfig $config;
 
-    protected array $connectionTypesMap = [
-        ConnectionEnum::TYPE_NORMAL => AMQPStreamConnection::class,
-        ConnectionEnum::TYPE_LAZY => AMQPLazyConnection::class
-    ];
+    protected array $connectionTypesMap = [];
 
     public function __construct(ConnectionsConfig $config)
     {
         $this->config = $config;
+        $this->registerConnectionTypes();
     }
 
-    public function addConnectionType(string $type, string $connectionClass)
+    protected function registerConnectionTypes(): void
+    {
+        $connectionTypes = $this->config->config()->get(ConnectionsConfig::CONNECTION_TYPES, []);
+        foreach ($connectionTypes as $type => $connectionClass) {
+            $this->addConnectionType($type, $connectionClass);;
+        }
+    }
+
+    public function addConnectionType(string $type, string $connectionClass): void
     {
         if (!class_exists($connectionClass) || is_subclass_of($connectionClass, AMQPAbstractConnection::class)) {
             throw new InvalidConnectionTypeException(
@@ -79,8 +82,7 @@ class ConnectionFactory
         if (null === ($connectionOptions = DTO::toArray($connectionOptions))) {
             throw new MakeConnectionFailedException(sprintf('Connection [%s] is broken', $name));
         }
-        if (!isset($this->connectionTypesMap[$connectionOptions['connection_type']])
-            || !class_exists($this->connectionTypesMap[$connectionOptions['connection_type']])) {
+        if (!isset($this->connectionTypesMap[$connectionOptions['connection_type']])) {
             throw new MakeConnectionFailedException(
                 sprintf('Connection type [%s] is not registered', $connectionOptions['connection_type'])
             );

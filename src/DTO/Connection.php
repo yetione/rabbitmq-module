@@ -109,13 +109,9 @@ class Connection implements DTOInterface
     /**
      * @var string
      * @Assert\Type(type="string")
-     * @Assert\Choice({
-     *     \Yetione\RabbitMQ\Constant\Connection::TYPE_LAZY,
-     *     \Yetione\RabbitMQ\Constant\Connection::TYPE_NORMAL
-     * })
      * @SerializedName("connection_type")
      */
-    private string $connectionType = ConnectionEnum::TYPE_NORMAL;
+    private string $connectionType = ConnectionEnum::TYPE_STREAM_NORMAL;
 
     /**
      * @return bool

@@ -15,6 +15,7 @@ class ConnectionsConfig extends AbstractConfig
     public const TYPE_CREDENTIALS='credentials';
     public const TYPE_NODES='nodes';
     public const TYPE_CONNECTIONS='connections';
+    public const CONNECTION_TYPES = 'connection_types';
 
     protected array $configTypes = [
         self::TYPE_CREDENTIALS => Credentials::class,
@@ -45,6 +46,9 @@ class ConnectionsConfig extends AbstractConfig
                 }
             }
             $result->put($type, $items);
+        }
+        if (isset($config[self::CONNECTION_TYPES])) {
+            $result->put(self::CONNECTION_TYPES, $config[self::CONNECTION_TYPES]);
         }
         return $result;
     }
