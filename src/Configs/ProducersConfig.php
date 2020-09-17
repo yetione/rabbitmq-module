@@ -17,7 +17,6 @@ class ProducersConfig extends AbstractConfig
     {
         $result = collect([]);
         $config = $this->configProvider->read();
-        $serializer = new Serializer();
         foreach ($config as $name => $parameters) {
             $parameters = array_merge(
                 $this->defaultConfig->config()->get(DefaultConfig::CONNECTABLE, collect([]))->all(),
