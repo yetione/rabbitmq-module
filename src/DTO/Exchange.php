@@ -24,12 +24,6 @@ class Exchange implements DTOInterface
     /**
      * @var string
      * @Assert\Type(type="string")
-     * @Assert\Choice({
-     *     \Yetione\RabbitMQ\Constant\Echange::TYPE_DIRECT,
-     *     \Yetione\RabbitMQ\Constant\Echange::TYPE_TOPIC,
-     *     \Yetione\RabbitMQ\Constant\Echange::TYPE_HEADERS,
-     *     \Yetione\RabbitMQ\Constant\Echange::TYPE_FANOUT
-     *     })
      * @SerializedName("type")
      */
     private $type;
