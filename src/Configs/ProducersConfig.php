@@ -23,8 +23,7 @@ class ProducersConfig extends AbstractConfig
                 $this->defaultConfig->config()->get(DefaultConfig::CONNECTABLE, collect([]))->all(),
                 $parameters
             );
-//            if (null !== ($object = DTO::fromArray($parameters, Producer::class))) {
-            if (null !== ($object = $serializer->fromArray($parameters, Producer::class))) {
+            if (null !== ($object = DTO::fromArray($parameters, Producer::class))) {
                 $result->put($name, $object);
             }
         }
