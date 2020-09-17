@@ -7,9 +7,12 @@ namespace Yetione\RabbitMQ\DTO;
 use Yetione\DTO\DTOInterface;
 use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
+use Yetione\DTO\Support\MagicSetter;
 
 class Exchange implements DTOInterface
 {
+    use MagicSetter;
+
     /**
      * @var string
      * @Assert\Type(type="string")
@@ -116,33 +119,11 @@ class Exchange implements DTOInterface
      * Exchange constructor.
      * @param string $name
      * @param string $type
-     * @param bool $passive
-     * @param bool $durable
-     * @param bool $autoDelete
-     * @param bool $internal
-     * @param bool $nowait
-     * @param array|null $arguments
-     * @param int|null $ticket
-     * @param bool $declare
-     * @param bool $temporary
      */
-    public function __construct(
-        string $name, string $type, bool $passive=false,
-        bool $durable=true, bool $autoDelete=false, bool $internal=false,
-        bool $nowait=false, ?array $arguments=[], ?int $ticket=null, bool $declare=true, bool $temporary=false
-    )
+    public function __construct(string $name, string $type)
     {
         $this->name = $name;
         $this->type = $type;
-        $this->passive = $passive;
-        $this->durable = $durable;
-        $this->autoDelete = $autoDelete;
-        $this->internal = $internal;
-        $this->nowait = $nowait;
-        $this->arguments = $arguments;
-        $this->ticket = $ticket;
-        $this->declare = $declare;
-        $this->temporary = $temporary;
     }
 
     /**
