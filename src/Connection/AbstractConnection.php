@@ -45,7 +45,7 @@ abstract class AbstractConnection
             } catch (ConnectionIsNotSetupException $e) {
                 // TODO: Log
             }
-            $this->clear();
+            $this->cleanData();
         }
     }
 
@@ -54,7 +54,7 @@ abstract class AbstractConnection
      */
     protected function destroy(): void
     {
-        $this->closeChannel()->unregisterHeartbeat()->closeConnection()->clear();
+        $this->closeChannel()->unregisterHeartbeat()->closeConnection()->cleanData();
     }
 
     /**
@@ -63,7 +63,7 @@ abstract class AbstractConnection
      */
     public function getChannel(): AMQPChannel
     {
-        if (!isset($this->channel)) {
+        if (!$this->isChannelSetup()) {
             $this->setChannel($this->createChannel());
         }
         return $this->channel;
@@ -112,9 +112,14 @@ abstract class AbstractConnection
             } catch (Exception $e) {
                 // TODO: Log
             }
-            unset($this->channel);
+            $this->cleanChannel();
         }
         return $this;
+    }
+
+    protected function cleanChannel(): void
+    {
+        unset($this->channel);
     }
 
     /**
@@ -145,8 +150,13 @@ abstract class AbstractConnection
         } catch (Exception $e) {
             // TODO: Log
         }
-        unset($this->connection);
+        $this->cleanConnection();
         return $this;
+    }
+
+    protected function cleanConnection(): void
+    {
+        unset($this->connection);
     }
 
     protected function isConnectionSetup(): bool
@@ -204,9 +214,14 @@ abstract class AbstractConnection
         $this->connectionRequired();
         if ($this->isHeartbeatRegistered()) {
             $this->heartbeatSender->unregister();
-            unset($this->heartbeatSender);
+            $this->cleanHeartbeat();
         }
         return $this;
+    }
+
+    protected function cleanHeartbeat(): void
+    {
+        unset($this->heartbeatSender);
     }
 
     protected function isHeartbeatRegistered(): bool
@@ -496,11 +511,12 @@ abstract class AbstractConnection
         return false;
     }
 
-    protected function clear()
+    protected function cleanData(): self
     {
         $this->declaredExchanges = [];
         $this->declaredQueues = [];
         $this->declaredQueuesBinds = [];
         $this->declaredExchangeBindings = [];
+        return $this;
     }
 }
