@@ -14,6 +14,7 @@ class ConnectableConfig extends AbstractConfig
     public const RECONNECT_DELAY = 'reconnect_delay';
 
     public array $availableKeys = [
+
         self::AUTO_RECONNECT,
         self::RECONNECT_RETRIES,
         self::RECONNECT_DELAY
