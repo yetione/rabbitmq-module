@@ -16,6 +16,7 @@ class ConnectionsConfig extends AbstractConfig
     public const TYPE_NODES='nodes';
     public const TYPE_CONNECTIONS='connections';
     public const CONNECTION_TYPES = 'connection_types';
+    public const DEFAULT_CONNECTION_PARAMETERS = 'default_connection_parameters';
 
     protected array $configTypes = [
         self::TYPE_CREDENTIALS => Credentials::class,
@@ -27,6 +28,10 @@ class ConnectionsConfig extends AbstractConfig
     {
         $result = collect([]);
         $config = $this->configProvider->read();
+//        $defaultConnectionParameters = [];
+//        if (isset($config[self::DEFAULT_CONNECTION_PARAMETERS])) {
+//            $defaultConnectionParameters = $config[self::DEFAULT_CONNECTION_PARAMETERS];
+//        }
         foreach ($this->configTypes as $type => $itemClass) {
             if (!isset($config[$type])) {
                 continue;
@@ -40,6 +45,9 @@ class ConnectionsConfig extends AbstractConfig
                             $value['credentials'] = $config[self::TYPE_CREDENTIALS][$value['credentials']];
                         }
                         break;
+//                    case self::TYPE_CONNECTIONS:
+//                        $value = array_merge($defaultConnectionParameters, $value);
+//                        break;
                 }
                 if (null !== ($object = DTO::fromArray($value, $itemClass))) {
                     $items->put($key, $object);

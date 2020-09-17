@@ -11,11 +11,11 @@ use Yetione\RabbitMQ\DTO\Producer;
 
 class ProducersConfig extends AbstractConfig
 {
-    protected ConnectableConfig $connectableConfig;
+    protected DefaultConfig $defaultConfig;
 
-    public function __construct(ConnectableConfig $connectableConfig, ConfigProviderInterface $configProvider)
+    public function __construct(DefaultConfig $defaultConfig, ConfigProviderInterface $configProvider)
     {
-        $this->connectableConfig = $connectableConfig;
+        $this->defaultConfig = $defaultConfig;
         parent::__construct($configProvider);
     }
 
@@ -24,7 +24,10 @@ class ProducersConfig extends AbstractConfig
         $result = collect([]);
         $config = $this->configProvider->read();
         foreach ($config as $name => $parameters) {
-            $parameters = array_merge($this->connectableConfig->config()->all(), $parameters);
+            $parameters = array_merge(
+                $this->defaultConfig->config()->get(DefaultConfig::CONNECTABLE, collect([]))->all(),
+                $parameters
+            );
             if (null !== ($object = DTO::fromArray($parameters, Producer::class))) {
                 $result->put($name, $object);
             }

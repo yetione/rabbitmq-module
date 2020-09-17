@@ -38,7 +38,7 @@ class Connection implements DTOInterface
      * @Assert\Type(type="null")
      * @SerializedName("login_response")
      */
-    private $loginResponse;
+    private $loginResponse = null;
 
     /**
      * @var string
