@@ -7,9 +7,23 @@ namespace Yetione\RabbitMQ\DTO;
 use Yetione\DTO\DTOInterface;
 use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
+use Yetione\DTO\Support\MagicSetter;
 
+/**
+ * Class Connectable
+ * @package Yetione\RabbitMQ\DTO
+ *
+ * @method Connectable setConnection(string $connection)
+ * @method Connectable setAutoReconnect(bool $autoReconnect)
+ * @method Connectable setReconnectRetries(int $reconnectRetries)
+ * @method Connectable setReconnectDelay(int $reconnectDelay)
+ * @method Connectable setReconnectInterval(int $reconnectInterval)
+ * @method Connectable setConnectionAlias(?string $connectionAlias)
+ */
 abstract class Connectable implements DTOInterface
 {
+    use MagicSetter;
+
     /**
      * Восстанавливать или нет соединение с брокером сообщений автоматически, если текущее
      * соединение оборвалось.
@@ -30,14 +44,24 @@ abstract class Connectable implements DTOInterface
     private int $reconnectRetries = 5;
 
     /**
-     * Пауза между попытками восстановить соединение.
+     * Пауза между закрытием старого и открытием нового соединения
      * Измеряется в микросекундах (1/1000000 секунды).
      *
      * @var int
      * @Assert\Type(type="int")
      * @SerializedName("reconnect_delay")
      */
-    private int $reconnectDelay = 500000;
+    private int $reconnectDelay = 2000;
+
+    /**
+     * Пауза между попытками восстановить соединение.
+     * Измеряется в микросекундах (1/1000000 секунды).
+     *
+     * @var int
+     * @Assert\Type(type="int")
+     * @SerializedName("reconnect_inteval")
+     */
+    private int $reconnectInterval = 500000;
 
     /**
      * Имя соединения.
@@ -47,6 +71,15 @@ abstract class Connectable implements DTOInterface
      * @SerializedName("connection")
      */
     private string $connection;
+
+    /**
+     * Алиас для соединения.
+     *
+     * @var string|null
+     * @Assert\Type(type={"string", "null"})
+     * @SerializedName("connection_alias")
+     */
+    private ?string $connectionAlias = null;
 
     public function __construct(string $connection)
     {
@@ -62,31 +95,11 @@ abstract class Connectable implements DTOInterface
     }
 
     /**
-     * @param bool $autoReconnect
-     * @return Connectable
-     */
-    public function setAutoReconnect(bool $autoReconnect): Connectable
-    {
-        $this->autoReconnect = $autoReconnect;
-        return $this;
-    }
-
-    /**
      * @return int
      */
     public function getReconnectRetries(): int
     {
         return $this->reconnectRetries;
-    }
-
-    /**
-     * @param int $reconnectRetries
-     * @return Connectable
-     */
-    public function setReconnectRetries(int $reconnectRetries): Connectable
-    {
-        $this->reconnectRetries = $reconnectRetries;
-        return $this;
     }
 
     /**
@@ -98,13 +111,11 @@ abstract class Connectable implements DTOInterface
     }
 
     /**
-     * @param int $reconnectDelay
-     * @return Connectable
+     * @return int
      */
-    public function setReconnectDelay(int $reconnectDelay): Connectable
+    public function getReconnectInterval(): int
     {
-        $this->reconnectDelay = $reconnectDelay;
-        return $this;
+        return $this->reconnectInterval;
     }
 
     /**
@@ -116,12 +127,10 @@ abstract class Connectable implements DTOInterface
     }
 
     /**
-     * @param string $connection
-     * @return Connectable
+     * @return string|null
      */
-    public function setConnection(string $connection): Connectable
+    public function getConnectionAlias(): ?string
     {
-        $this->connection = $connection;
-        return $this;
+        return $this->connectionAlias;
     }
 }

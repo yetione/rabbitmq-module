@@ -8,7 +8,8 @@ use PhpAmqpLib\Message\AMQPMessage;
 use Throwable;
 use Yetione\RabbitMQ\Connection\ConnectionInterface;
 use Yetione\RabbitMQ\Connection\InteractsWithConnection;
-use Yetione\RabbitMQ\DTO\Exchange;
+use Yetione\RabbitMQ\DTO\Exchange as ExchangeDTO;
+use Yetione\RabbitMQ\DTO\Producer as ProducerDTO;
 use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterPublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforePublishingMessageEvent;
@@ -27,35 +28,44 @@ abstract class AbstractProducer implements ProducerInterface
 
     protected MessageFactoryInterface $messageFactory;
 
-    protected Exchange $exchange;
+    protected ProducerDTO $options;
+
+    protected ExchangeDTO $exchange;
 
     protected EventDispatcherInterface $eventDispatcher;
 
-    /**
-     * Кол-во повторных попыток
-     * @var int
-     */
-    protected int $retries = 5;
-
-    protected int $currentTry = 0;
+    protected int $currentPublishTry = 0;
 
     /**
      * AbstractProducer constructor.
+     * @param ProducerDTO $options
+     * @param ExchangeDTO $exchange
      * @param ConnectionInterface $connection
      * @param EventDispatcherInterface $eventDispatcher
      */
-    public function __construct(ConnectionInterface $connection, EventDispatcherInterface $eventDispatcher)
+    public function __construct(
+        ProducerDTO $options,
+        ExchangeDTO $exchange,
+        ConnectionInterface $connection,
+        EventDispatcherInterface $eventDispatcher
+    )
     {
+        $this->options = $options;
+        $this->exchange = $exchange;
         $this->eventDispatcher = $eventDispatcher;
         $this->setConnectionWrapper($connection);
     }
 
+    protected function setup()
+    {
+
+    }
+
     protected function beforePublish()
     {
-        $this->maybeReconnect();
         $this->connection()->declareExchange($this->getExchange());
-        $this->newTry();
-        if (1 < $this->currentTry()) {
+        $this->tryPublish();
+        if (1 === $this->currentPublishTry()) {
             $this->eventDispatcher->dispatch(
                 (new OnBeforePublishingMessageEvent())
                     ->setProducer($this)
@@ -63,48 +73,39 @@ abstract class AbstractProducer implements ProducerInterface
         }
     }
 
-    protected function afterPublish(AMQPMessage $message)
+    protected function afterPublish(AMQPMessage $message, ?Throwable $e=null)
     {
-        $this->eventDispatcher->dispatch(
-            (new OnAfterPublishingMessageEvent())
-                ->setProducer($this)
-                ->setMessage($message)
-        );
-        $this->resetTries();
-    }
-
-    protected function onPublishError(AMQPMessage $message, Throwable $e)
-    {
-        $this->eventDispatcher->dispatch(
-            (new OnErrorPublishingMessageEvent())
-            ->setProducer($this)->setMessage($message)
-            ->setParams(['error'=>$e])
-        );
+        $event = null === $e ?
+            new OnAfterPublishingMessageEvent() :
+            (new OnErrorPublishingMessageEvent())->setParams(['error'=>$e]);
+        $event->setProducer($this)->setMessage($message);
+        $this->eventDispatcher->dispatch($event);
+        $this->resetPublishTries();
     }
 
     protected function isNeedRetry(): bool
     {
-        if ($this->currentTry <= $this->getRetries()) {
+        if ($this->currentPublishTry <= $this->options->getPublishRetries()) {
             return true;
         }
         // Попытки кончились, а значит обнуляем счетчик
-        $this->resetTries();
+        $this->resetPublishTries();
         return false;
     }
 
-    protected function newTry()
+    protected function tryPublish()
     {
-        $this->currentTry++;
+        $this->currentPublishTry++;
     }
 
-    protected function resetTries()
+    protected function resetPublishTries()
     {
-        $this->currentTry = 0;
+        $this->currentPublishTry = 0;
     }
 
-    protected function currentTry(): int
+    protected function currentPublishTry(): int
     {
-        return $this->currentTry;
+        return $this->currentPublishTry;
     }
 
     protected function closeProducer()
@@ -128,30 +129,14 @@ abstract class AbstractProducer implements ProducerInterface
         return $this;
     }
 
-    public function setExchange(Exchange $exchange): self
+    public function setExchange(ExchangeDTO $exchange): self
     {
         $this->exchange = $exchange;
         return $this;
     }
 
-    public function getExchange(): Exchange
+    public function getExchange(): ExchangeDTO
     {
-        if (null === $this->exchange) {
-            $this->setExchange($this->createExchange());
-        }
         return $this->exchange;
-    }
-
-    abstract protected function createExchange(): Exchange;
-
-    public function getRetries(): int
-    {
-        return $this->retries;
-    }
-
-    public function setRetries(int $retries): self
-    {
-        $this->retries = $retries;
-        return $this;
     }
 }

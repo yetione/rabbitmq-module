@@ -4,21 +4,41 @@
 namespace Yetione\RabbitMQ\Producer;
 
 
+use Yetione\RabbitMQ\Configs\ExchangesConfig;
 use Yetione\RabbitMQ\Configs\ProducersConfig;
+use Yetione\RabbitMQ\Connection\ConnectionFactory;
+use Yetione\RabbitMQ\DTO\Exchange as ExchangeDTO;
+use Yetione\RabbitMQ\DTO\Producer as ProducerDTO;
+use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Exception\InvalidProducerTypeException;
+use Yetione\RabbitMQ\Exception\MakeProducerFailedException;
 
 class ProducerFactory
 {
     /** @var ProducerInterface[]  */
     protected array $producers = [];
 
-    protected ProducersConfig $config;
+    protected ProducersConfig $producersConfig;
+
+    protected ExchangesConfig $exchangesConfig;
+
+    protected ConnectionFactory $connectionFactory;
+
+    protected EventDispatcherInterface $eventDispatcher;
 
     protected array $producerTypesMap = [];
 
-    public function __construct(ProducersConfig $config)
+    public function __construct(
+        ProducersConfig $producersConfig,
+        ExchangesConfig $exchangesConfig,
+        ConnectionFactory $connectionFactory,
+        EventDispatcherInterface $eventDispatcher
+    )
     {
-        $this->config;
+        $this->producersConfig = $producersConfig;
+        $this->exchangesConfig = $exchangesConfig;
+        $this->connectionFactory = $connectionFactory;
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     public function addProducerType(string $type, string $producerClass): void
@@ -29,5 +49,41 @@ class ProducerFactory
             );
         }
         $this->producerTypesMap[$type] = $producerClass;
+    }
+
+    public function make(string $name, ?string $alias=null): ProducerInterface
+    {
+        $alias = $alias ?: $name;
+        if (!isset($this->producers[$alias])) {
+            $this->producers[$alias] = $this->createProducer($name);
+        }
+        return $this->producers[$alias];
+    }
+
+    protected function createProducer(string $name): ProducerInterface
+    {
+        /** @var ProducerDTO $producerOptions */
+        if (null === ($producerOptions = $this->producersConfig->config()->get($name))) {
+            throw new MakeProducerFailedException(sprintf('Producer [%s] is missing', $name));
+        }
+        if (!isset($this->producerTypesMap[$producerOptions->getType()])) {
+            throw new MakeProducerFailedException(
+                sprintf('Producer\'s type [%s] is not registered', $producerOptions->getType())
+            );
+        }
+        /** @var ExchangeDTO $exchange */
+        if (null === ($exchange = $this->exchangesConfig->config()->get($producerOptions->getExchange()))) {
+            throw new MakeProducerFailedException(
+                sprintf('Exchange [%s] is missing', $producerOptions->getExchange())
+            );
+        }
+
+        $connectionWrapper = $this->connectionFactory->make(
+            $producerOptions->getConnection(),
+            $producerOptions->getConnectionAlias()
+        );
+
+
+
     }
 }

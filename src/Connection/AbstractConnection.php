@@ -3,24 +3,27 @@
 
 namespace Yetione\RabbitMQ\Connection;
 
-
 use Exception;
 use PhpAmqpLib\Channel\AMQPChannel;
-use PhpAmqpLib\Connection\AbstractConnection;
+use PhpAmqpLib\Connection\AbstractConnection as AMQPAbstractConnection;
 use PhpAmqpLib\Connection\Heartbeat\PCNTLHeartbeatSender;
+use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exception\AMQPTimeoutException;
-use Throwable;
-use Yetione\RabbitMQ\DTO\ExchangeBinding;
 use Yetione\RabbitMQ\DTO\Exchange;
+use Yetione\RabbitMQ\DTO\ExchangeBinding;
 use Yetione\RabbitMQ\DTO\QosOptions;
 use Yetione\RabbitMQ\DTO\Queue;
 use Yetione\RabbitMQ\DTO\QueueBinding;
+use Yetione\RabbitMQ\Exception\ConnectionIsNotSetupException;
 
-class ConnectionWrapper implements ConnectionInterface
+
+abstract class AbstractConnection
 {
-    protected AbstractConnection $connection;
+    protected AMQPAbstractConnection $connection;
 
-    protected ?AMQPChannel $channel;
+    protected AMQPChannel $channel;
+
+    protected PCNTLHeartbeatSender $heartbeatSender;
 
     protected array $declaredExchanges = [];
 
@@ -30,162 +33,193 @@ class ConnectionWrapper implements ConnectionInterface
 
     protected array $declaredExchangeBindings = [];
 
-    protected ?PCNTLHeartbeatSender $heartbeatSender = null;
-
-    public function __construct(AbstractConnection $connection)
+    /**
+     * @param AMQPAbstractConnection $connection
+     */
+    protected function setup(AMQPAbstractConnection $connection): void
     {
-        $this->setupConnection($connection);
+        if (!$this->isConnectionSetup()) {
+            $this->setConnection($connection);
+            try {
+                $this->registerHeartbeat();
+            } catch (ConnectionIsNotSetupException $e) {
+                // TODO: Log
+            }
+            $this->clear();
+        }
     }
 
-    protected function setupConnection(AbstractConnection $connection)
+    /**
+     * @throws ConnectionIsNotSetupException
+     */
+    protected function destroy(): void
     {
-        $this->setConnection($connection);
-        $this->registerHeartbeat();
+        $this->closeChannel()->unregisterHeartbeat()->closeConnection()->clear();
     }
 
-    public function getChannel(bool $createNew=false): AMQPChannel
+    /**
+     * @return AMQPChannel
+     * @throws ConnectionIsNotSetupException
+     */
+    public function getChannel(): AMQPChannel
     {
-        if (null === $this->channel || $createNew) {
-            $this->setChannel($this->closeChannel()->createChannel());
+        if (!isset($this->channel)) {
+            $this->setChannel($this->createChannel());
         }
         return $this->channel;
     }
 
-    public function setChannel(?AMQPChannel $channel): self
+    protected function setChannel(AMQPChannel $channel): self
     {
         $this->channel = $channel;
         return $this;
     }
 
     /**
-     * @return ConnectionWrapper
+     * @param int|null $channelId
+     * @return AMQPChannel
+     * @throws ConnectionIsNotSetupException
      */
-    public function closeChannel(): self
+    protected function createChannel(?int $channelId=null): AMQPChannel
+    {
+        $this->connectionRequired();
+        return $this->connection->channel($channelId);
+    }
+
+    /**
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
+    protected function isChannelOpen(): bool
+    {
+        return $this->isChannelSetup() && $this->getChannel()->is_open();
+    }
+
+    protected function isChannelSetup(): bool
+    {
+        return isset($this->channel);
+    }
+
+    /**
+     * @return $this
+     * @throws ConnectionIsNotSetupException
+     */
+    protected function closeChannel(): self
     {
         if ($this->isChannelOpen()) {
             try {
                 $this->getChannel()->close();
-            } catch (Exception | Throwable $e) {
+            } catch (Exception $e) {
                 // TODO: Log
             }
-            $this->setChannel(null);
+            unset($this->channel);
         }
         return $this;
     }
 
     /**
-     * @param int|null $channelId
-     * @return AMQPChannel
+     * @return AMQPAbstractConnection
+     * @throws ConnectionIsNotSetupException
      */
-    public function createChannel(int $channelId=null): AMQPChannel
+    protected function getConnection(): AMQPAbstractConnection
     {
-        return $this->getConnection()->channel($channelId);
-    }
-
-    /**
-     * @return bool
-     */
-    public function isChannelOpen(): bool
-    {
-        return null !== $this->channel && $this->getChannel()->is_open();
-    }
-
-    public function registerHeartbeat(): bool
-    {
-        if (!$this->isHeartbeatRegister() && 0 < $this->getConnection()->getHeartbeat()) {
-            $this->setHeartbeatSender(new PCNTLHeartbeatSender($this->getConnection()));
-            $this->getHeartbeatSender()->register();
-            return true;
-        }
-        return false;
-    }
-
-    public function unregisterHeartbeat(): bool
-    {
-        if ($this->isHeartbeatRegister()) {
-            $this->getHeartbeatSender()->unregister();
-            $this->setHeartbeatSender(null);
-            return true;
-        }
-        return false;
-    }
-
-    public function isHeartbeatRegister(): bool
-    {
-        return isset($this->heartbeatSender) && null !== $this->heartbeatSender;
-    }
-
-    /**
-     * @return AbstractConnection
-     */
-    public function getConnection(): AbstractConnection
-    {
+        $this->connectionRequired();
         return $this->connection;
     }
 
-    /**
-     * @param AbstractConnection $connection
-     * @return ConnectionWrapper
-     */
-    public function setConnection(AbstractConnection $connection): self
+    protected function setConnection(AMQPAbstractConnection $connection): self
     {
         $this->connection = $connection;
         return $this;
     }
 
-    public function isConnectionOpen(): bool
+    /**
+     * @return $this
+     * @throws ConnectionIsNotSetupException
+     */
+    protected function closeConnection(): self
+    {
+        $this->connectionRequired();
+        try {
+            $this->getConnection()->close();
+        } catch (Exception $e) {
+            // TODO: Log
+        }
+        unset($this->connection);
+        return $this;
+    }
+
+    protected function isConnectionSetup(): bool
+    {
+        return isset($this->connection);
+    }
+
+    /**
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
+    protected function isConnectionConnected(): bool
     {
         return $this->getConnection()->isConnected();
     }
 
-    public function closeConnection(): self
+    /**
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
+    protected function connectionRequired(): bool
     {
-        if ($this->isConnectionOpen()) {
+        if (!$this->isConnectionSetup()) {
+            throw new ConnectionIsNotSetupException('AMQP connection is not setup yet');
+        }
+        return true;
+    }
+
+    /**
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
+    protected function registerHeartbeat(): bool
+    {
+        $this->connectionRequired();
+        if (!$this->isHeartbeatRegistered() && 0 < $this->connection->getHeartbeat()) {
             try {
-                $this->getConnection()->close();
-            } catch (Exception $e) {
+                $heartbeatSender = new PCNTLHeartbeatSender($this->connection);
+                $heartbeatSender->register();
+                $this->heartbeatSender = $heartbeatSender;
+                return true;
+            } catch (AMQPRuntimeException $e) {
                 // TODO: Log
             }
         }
-        return $this;
+        return false;
     }
 
-    public function close(): self
+    /**
+     * @return $this
+     * @throws ConnectionIsNotSetupException
+     */
+    protected function unregisterHeartbeat(): self
     {
-        $this->closeChannel();
-        $this->unregisterHeartbeat();
-        $this->closeConnection();
-        $this->resetDeclaredData();
-        return $this;
-    }
-
-    public function open(): self
-    {
-        if (!$this->isConnectionOpen()) {
-            $this->getConnection()->reconnect();
-            $this->registerHeartbeat();
-            if (!$this->isChannelOpen()) {
-                $this->setChannel($this->createChannel());
-            }
+        $this->connectionRequired();
+        if ($this->isHeartbeatRegistered()) {
+            $this->heartbeatSender->unregister();
+            unset($this->heartbeatSender);
         }
         return $this;
     }
 
-    public function reconnect(int $waitBeforeConnect=0): self
+    protected function isHeartbeatRegistered(): bool
     {
-        $this->close();
-        if (0 < $waitBeforeConnect) {
-            usleep($waitBeforeConnect);
-        }
-        $this->open();
-        return $this;
+        return isset($this->heartbeatSender);
     }
 
-    public function __destruct()
-    {
-        $this->close();
-    }
-
+    /**
+     * @param Exchange $exchange
+     * @param bool $forceDeclare
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
     public function declareExchange(Exchange $exchange, bool $forceDeclare=false): bool
     {
         if (($exchange->isDeclare() && !isset($this->declaredExchanges[$exchange->getName()])) || $forceDeclare) {
@@ -210,11 +244,17 @@ class ConnectionWrapper implements ConnectionInterface
         return false;
     }
 
+    /**
+     * @param Queue $queue
+     * @param bool $forceDeclare
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
     public function declareQueue(Queue $queue, bool $forceDeclare=false): bool
     {
         if (($queue->isDeclare() && !isset($this->declaredQueues[$queue->getName()])) || $forceDeclare) {
             try {
-                list($sQueueName, $iMessageCount, $iConsumersCount) = $this->getChannel()->queue_declare(
+                list($queueName,,) = $this->getChannel()->queue_declare(
                     $queue->getName(),
                     $queue->isPassive(),
                     $queue->isDurable(),
@@ -224,8 +264,8 @@ class ConnectionWrapper implements ConnectionInterface
                     $queue->getArguments(),
                     $queue->getTicket()
                 );
-                if ($sQueueName !== $queue->getName()) {
-                    $queue->setName($sQueueName);
+                if ($queueName !== $queue->getName()) {
+                    $queue->setName($queueName);
                 }
                 $this->declaredQueues[$queue->getName()] = true;
                 return true;
@@ -236,18 +276,24 @@ class ConnectionWrapper implements ConnectionInterface
         return false;
     }
 
+    /**
+     * @param QueueBinding $binding
+     * @param bool $forceDeclare
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
     public function declareQueueBinding(QueueBinding $binding, bool $forceDeclare=false): bool
     {
         if (($binding->isDeclare() && !isset($this->declaredQueuesBinds[$binding->getKey()])) || $forceDeclare) {
-            $aRoutingKey = !is_array($binding->getRoutingKey()) ?
+            $routingKeys = !is_array($binding->getRoutingKey()) ?
                 [$binding->getRoutingKey()] :
                 $binding->getRoutingKey();
-            foreach ($aRoutingKey as $sRoutingKey) {
+            foreach ($routingKeys as $routingKey) {
                 try {
                     $this->getChannel()->queue_bind(
                         $binding->getQueue()->getName(),
                         $binding->getExchange()->getName(),
-                        $sRoutingKey,
+                        $routingKey,
                         $binding->isNowait(),
                         $binding->getArguments(),
                         $binding->getTicket()
@@ -263,18 +309,24 @@ class ConnectionWrapper implements ConnectionInterface
         return false;
     }
 
+    /**
+     * @param ExchangeBinding $binding
+     * @param bool $forceDeclare
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
     public function declareExchangeBinding(ExchangeBinding $binding, bool $forceDeclare=false): bool
     {
         if (($binding->isDeclare() && !isset($this->declaredExchangeBindings[$binding->getKey()])) || $forceDeclare) {
-            $aRoutingKey = !is_array($binding->getRoutingKey()) ?
+            $routingKeys = !is_array($binding->getRoutingKey()) ?
                 [$binding->getRoutingKey()] :
                 $binding->getRoutingKey();
-            foreach ($aRoutingKey as $sRoutingKey) {
+            foreach ($routingKeys as $routingKey) {
                 try {
                     $this->getChannel()->exchange_bind(
                         $binding->getDestination()->getName(),
                         $binding->getExchange()->getName(),
-                        $sRoutingKey,
+                        $routingKey,
                         $binding->isNowait(),
                         $binding->getArguments(),
                         $binding->getTicket()
@@ -284,11 +336,19 @@ class ConnectionWrapper implements ConnectionInterface
                     return false;
                 }
             }
+            $this->declaredExchangeBindings[$binding->getKey()] = true;
+            return true;
 
         }
         return false;
     }
 
+    /**
+     * @param Queue $queue
+     * @param bool $noWait
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
     public function purgeQueue(Queue $queue, bool $noWait=true): bool
     {
         try {
@@ -296,10 +356,18 @@ class ConnectionWrapper implements ConnectionInterface
             return true;
         } catch (AMQPTimeoutException $e) {
             // TODO: Log
-            return false;
         }
+        return false;
     }
 
+    /**
+     * @param Queue $queue
+     * @param bool $onlyIfUnused
+     * @param bool $onlyIfEmpty
+     * @param bool $noWait
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
     public function deleteQueue(Queue $queue, bool $onlyIfUnused=false, bool $onlyIfEmpty=false, bool $noWait=false): bool
     {
         try {
@@ -310,13 +378,23 @@ class ConnectionWrapper implements ConnectionInterface
                 $noWait,
                 $queue->getTicket()
             );
+            if (isset($this->declaredQueues[$queue->getName()])) {
+                unset($this->declaredQueues[$queue->getName()]);
+            }
             return true;
         } catch (AMQPTimeoutException $e) {
             // TODO: Log
-            return false;
         }
+        return false;
     }
 
+    /**
+     * @param Exchange $exchange
+     * @param bool $onlyIfUnused
+     * @param bool $noWait
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
     public function deleteExchange(Exchange $exchange, bool $onlyIfUnused=false, bool $noWait=false): bool
     {
         try {
@@ -326,58 +404,83 @@ class ConnectionWrapper implements ConnectionInterface
                 $noWait,
                 $exchange->getTicket()
             );
+            if (isset($this->declaredExchanges[$exchange->getName()])) {
+                unset($this->declaredExchanges[$exchange->getName()]);
+            }
             return true;
         } catch (AMQPTimeoutException $e) {
             // TODO: Log
-            return false;
         }
+        return false;
     }
 
+    /**
+     * @param ExchangeBinding $binding
+     * @param bool $noWait
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
     public function unbindExchange(ExchangeBinding $binding, bool $noWait=false): bool
     {
         try {
-            $aRoutingKey = !is_array($binding->getRoutingKey()) ?
+            $routingKeys = !is_array($binding->getRoutingKey()) ?
                 [$binding->getRoutingKey()] :
                 $binding->getRoutingKey();
-            foreach ($aRoutingKey as $sKey) {
+            foreach ($routingKeys as $routingKey) {
                 $this->getChannel()->exchange_unbind(
                     $binding->getDestination()->getName(),
                     $binding->getExchange()->getName(),
-                    $sKey,
+                    $routingKey,
                     $noWait,
                     $binding->getArguments(),
                     $binding->getTicket()
                 );
             }
-            return true;
-        } catch (AMQPTimeoutException $e) {
-            // TODO: Log
-            return false;
-        }
-    }
-
-    public function unbindQueue(QueueBinding $binding): bool
-    {
-        try {
-            $aRoutingKey = !is_array($binding->getRoutingKey()) ?
-                [$binding->getRoutingKey()] :
-                $binding->getRoutingKey();
-            foreach ($aRoutingKey as $sKey) {
-                $this->getChannel()->queue_unbind(
-                    $binding->getQueue()->getName(),
-                    $binding->getExchange()->getName(),
-                    $sKey,
-                    $binding->getArguments(),
-                    $binding->getTicket()
-                );
+            if (isset($this->declaredExchangeBindings[$binding->getKey()])) {
+                unset($this->declaredExchangeBindings[$binding->getKey()]);
             }
             return true;
         } catch (AMQPTimeoutException $e) {
             // TODO: Log
-            return false;
         }
+        return false;
     }
 
+    /**
+     * @param QueueBinding $binding
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
+    public function unbindQueue(QueueBinding $binding): bool
+    {
+        try {
+            $routingKeys = !is_array($binding->getRoutingKey()) ?
+                [$binding->getRoutingKey()] :
+                $binding->getRoutingKey();
+            foreach ($routingKeys as $routingKey) {
+                $this->getChannel()->queue_unbind(
+                    $binding->getQueue()->getName(),
+                    $binding->getExchange()->getName(),
+                    $routingKey,
+                    $binding->getArguments(),
+                    $binding->getTicket()
+                );
+            }
+            if (isset($this->declaredQueuesBinds[$binding->getKey()])) {
+                unset($this->declaredQueuesBinds[$binding->getKey()]);
+            }
+            return true;
+        } catch (AMQPTimeoutException $e) {
+            // TODO: Log
+        }
+        return false;
+    }
+
+    /**
+     * @param QosOptions $qosOptions
+     * @return bool
+     * @throws ConnectionIsNotSetupException
+     */
     public function declareQosOptions(QosOptions $qosOptions): bool
     {
         try {
@@ -393,29 +496,11 @@ class ConnectionWrapper implements ConnectionInterface
         return false;
     }
 
-    protected function resetDeclaredData()
+    protected function clear()
     {
         $this->declaredExchanges = [];
         $this->declaredQueues = [];
         $this->declaredQueuesBinds = [];
         $this->declaredExchangeBindings = [];
-    }
-
-    /**
-     * @return PCNTLHeartbeatSender|null
-     */
-    public function getHeartbeatSender(): ?PCNTLHeartbeatSender
-    {
-        return $this->heartbeatSender;
-    }
-
-    /**
-     * @param PCNTLHeartbeatSender|null $heartbeatSender
-     * @return ConnectionWrapper
-     */
-    public function setHeartbeatSender(?PCNTLHeartbeatSender $heartbeatSender): ConnectionWrapper
-    {
-        $this->heartbeatSender = $heartbeatSender;
-        return $this;
     }
 }

@@ -35,11 +35,11 @@ abstract class SingleProducer extends AbstractProducer
             if ($this->isNeedRetry()) {
                 return $this->publish($message, $routingKey, $mandatory, $immediate, $ticket);
             }
-            $this->onPublishError($message, $e);
+            $this->afterPublish($message, $e);
             return $this;
         } catch (AMQPConnectionBlockedException $e) {
             // TODO: Log
-            $this->onPublishError($message, $e);
+            $this->afterPublish($message, $e);
             return $this;
         }
         $this->afterPublish($message);
@@ -49,7 +49,7 @@ abstract class SingleProducer extends AbstractProducer
     public function getMessageFactory(): MessageFactoryInterface
     {
         if (null === $this->messageFactory) {
-            $this->messageFactory = new ReusableMessageFactory();
+            $this->setMessageFactory(new ReusableMessageFactory());
         }
         return parent::getMessageFactory();
     }

@@ -18,12 +18,14 @@ class DefaultConfig extends AbstractConfig
     public const CONNECTABLE_AUTO_RECONNECT = 'auto_reconnect';
     public const CONNECTABLE_RECONNECT_RETRIES = 'reconnect_retries';
     public const CONNECTABLE_RECONNECT_DELAY = 'reconnect_delay';
+    public const CONNECTABLE_RECONNECT_INTERVAL = 'reconnect_interval';
 
     public array $availableKeys = [
         self::CONNECTABLE => [
             self::CONNECTABLE_AUTO_RECONNECT,
             self::CONNECTABLE_RECONNECT_RETRIES,
-            self::CONNECTABLE_RECONNECT_DELAY
+            self::CONNECTABLE_RECONNECT_DELAY,
+            self::CONNECTABLE_RECONNECT_INTERVAL
         ],
         self::CONNECTION => [],
         self::PRODUCER => [],

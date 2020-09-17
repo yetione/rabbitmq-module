@@ -6,6 +6,14 @@ namespace Yetione\RabbitMQ\DTO;
 use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Class Producer
+ * @package Yetione\RabbitMQ\DTO
+ *
+ * @method Producer setExchange(string $exchange)
+ * @method Producer setType(string $type)
+ * @method Producer setPublishRetries(int $publishRetries)
+ */
 class Producer extends Connectable
 {
 
@@ -23,6 +31,16 @@ class Producer extends Connectable
      */
     private string $exchange;
 
+    /**
+     * Кол-во попыток повторной отправки сообщения.
+     *
+     * @var int
+     * @Assert\Type(type="int")
+     * @Assert\GreaterThanOrEqual(0)
+     * @SerializedName("publish_retries")
+     */
+    private int $publishRetries = 0;
+
     public function __construct(string $type, string $exchange, string $connection)
     {
         parent::__construct($connection);
@@ -38,16 +56,6 @@ class Producer extends Connectable
     }
 
     /**
-     * @param string $type
-     * @return Producer
-     */
-    public function setType(string $type): Producer
-    {
-        $this->type = $type;
-        return $this;
-    }
-
-    /**
      * @return string
      */
     public function getExchange(): string
@@ -56,12 +64,10 @@ class Producer extends Connectable
     }
 
     /**
-     * @param string $exchange
-     * @return Producer
+     * @return int
      */
-    public function setExchange(string $exchange): Producer
+    public function getPublishRetries(): int
     {
-        $this->exchange = $exchange;
-        return $this;
+        return $this->publishRetries;
     }
 }

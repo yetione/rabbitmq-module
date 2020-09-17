@@ -8,6 +8,7 @@ use PhpAmqpLib\Exception\AMQPChannelClosedException;
 use PhpAmqpLib\Exception\AMQPConnectionBlockedException;
 use PhpAmqpLib\Exception\AMQPConnectionClosedException;
 use PhpAmqpLib\Message\AMQPMessage;
+use Throwable;
 use Yetione\RabbitMQ\Event\OnAfterFlushingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforeFlushingMessageEvent;
 use Yetione\RabbitMQ\Event\OnErrorFlushingMessageEvent;
@@ -45,17 +46,19 @@ abstract class BatchProducer extends AbstractProducer
         return $this;
     }
 
-    protected function afterPublish(AMQPMessage $message)
+    protected function afterPublish(AMQPMessage $message, ?Throwable $e=null)
     {
-        parent::afterPublish($message);
-        $this->flushMessage(false);
+        parent::afterPublish($message, $e);
+        if (null !== $e) {
+            $this->flushMessage(false);
+        }
     }
 
     public function flushMessage(bool $force=true): self
     {
         if (($force || 0 === $this->currentBatchSize % $this->getBatchSize())) {
-            $this->newTry();
-            if (1 < $this->currentTry()) {
+            $this->tryPublish();
+            if (1 === $this->currentPublishTry()) {
                 $this->eventDispatcher->dispatch((new OnBeforeFlushingMessageEvent())->setProducer($this));
             }
             try {
@@ -73,6 +76,7 @@ abstract class BatchProducer extends AbstractProducer
                 // TODO: Log
                 $this->eventDispatcher->dispatch((new OnErrorFlushingMessageEvent())->setProducer($this)->setParams(['error'=>$e]));
             }
+            $this->resetPublishTries();
         }
         return $this;
     }
@@ -86,7 +90,7 @@ abstract class BatchProducer extends AbstractProducer
     public function getMessageFactory(): MessageFactoryInterface
     {
         if (null === $this->messageFactory) {
-            $this->messageFactory = new NewMessageFactory();
+            $this->setMessageFactory(new NewMessageFactory());
         }
         return parent::getMessageFactory();
     }
