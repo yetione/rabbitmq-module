@@ -21,17 +21,17 @@ abstract class AbstractConfig
         $this->configLoaded = false;
     }
 
-    public function config(): Collection
+    public function config(bool $reload=false): Collection
     {
-        if (!isset($this->config)) {
-            $this->loadConfig();
+        if (!isset($this->config) || !$this->configLoaded || $reload) {
+            $this->config = $this->parseConfig();
+            $this->configLoaded = true;
         }
         return $this->config;
     }
 
     /**
-     * @param bool $reload
-     * @return bool
+     * @return Collection
      */
-    abstract protected function loadConfig(bool $reload=false): bool;
+    abstract protected function parseConfig(): Collection;
 }

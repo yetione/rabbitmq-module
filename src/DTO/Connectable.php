@@ -38,13 +38,6 @@ abstract class Connectable implements DTOInterface
      */
     private string $connection;
 
-    /**
-     * @var string|null
-     * @Assert\Type(type={"string", "null"})
-     * @SerializedName("connection_name")
-     */
-    private ?string $connectionName;
-
     public function __construct(string $connection)
     {
         $this->setConnection($connection);
@@ -119,24 +112,6 @@ abstract class Connectable implements DTOInterface
     public function setConnection(string $connection): Connectable
     {
         $this->connection = $connection;
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getConnectionName(): ?string
-    {
-        return $this->connectionName;
-    }
-
-    /**
-     * @param string|null $connectionName
-     * @return Connectable
-     */
-    public function setConnectionName(?string $connectionName): Connectable
-    {
-        $this->connectionName = $connectionName;
         return $this;
     }
 }

@@ -7,9 +7,9 @@ use Yetione\DTO\DTOInterface;
 use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
 use Yetione\DTO\Support\MagicSetter;
-use Yetione\RabbitMQ\Constant\Connection;
+use Yetione\RabbitMQ\Constant\Connection as ConnectionEnum;
 
-class ConnectionOptions implements DTOInterface
+class Connection implements DTOInterface
 {
     use MagicSetter;
 
@@ -31,7 +31,7 @@ class ConnectionOptions implements DTOInterface
      * })
      * @SerializedName("login_method")
      */
-    private string $loginMethod = Connection::LOGIN_METHOD_AMQPPLAIN;
+    private string $loginMethod = ConnectionEnum::LOGIN_METHOD_AMQPPLAIN;
 
     /**
      * @var null
@@ -54,7 +54,7 @@ class ConnectionOptions implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("connection_timeout")
      */
-    private float $connectionTimeout = 3;
+    private float $connectionTimeout = 3.0;
 
     /**
      * @var float
@@ -62,7 +62,7 @@ class ConnectionOptions implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("read_write_timeout")
      */
-    private float $readWriteTimeout = 3;
+    private float $readWriteTimeout = 130.0;
 
     /**
      * @var array|null
@@ -115,7 +115,7 @@ class ConnectionOptions implements DTOInterface
      * })
      * @SerializedName("connection_type")
      */
-    private string $connectionType = Connection::TYPE_NORMAL;
+    private string $connectionType = ConnectionEnum::TYPE_NORMAL;
 
     /**
      * @return bool

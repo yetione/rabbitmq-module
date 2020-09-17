@@ -12,8 +12,8 @@ use PhpAmqpLib\Connection\Heartbeat\PCNTLHeartbeatSender;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use Yetione\DTO\DTO;
 use Yetione\RabbitMQ\Configs\ConnectionsConfig;
-use Yetione\RabbitMQ\Constant\Connection;
-use Yetione\RabbitMQ\DTO\ConnectionOptions;
+use Yetione\RabbitMQ\Constant\Connection as ConnectionEnum;
+use Yetione\RabbitMQ\DTO\Connection;
 use Yetione\RabbitMQ\DTO\Node;
 use Yetione\RabbitMQ\Exception\MakeConnectionFailedException;
 
@@ -27,8 +27,8 @@ class ConnectionFactory
     protected ConnectionsConfig $config;
 
     protected array $connectionTypesMap = [
-        Connection::TYPE_NORMAL => AMQPStreamConnection::class,
-        Connection::TYPE_LAZY => AMQPLazyConnection::class
+        ConnectionEnum::TYPE_NORMAL => AMQPStreamConnection::class,
+        ConnectionEnum::TYPE_LAZY => AMQPLazyConnection::class
     ];
 
     public function __construct(ConnectionsConfig $config)
@@ -37,34 +37,34 @@ class ConnectionFactory
     }
 
     /**
-     * @param string $options
-     * @param string|null $name
+     * @param string $name
+     * @param string|null $alias
      * @return ConnectionInterface
      * @throws MakeConnectionFailedException
      */
-    public function make(string $options, ?string $name=null): ConnectionInterface
+    public function make(string $name, ?string $alias=null): ConnectionInterface
     {
-        $name = $name ?: $options;
-        if (!isset($this->connections[$name])) {
-            $this->connections[$name] = $this->createConnection($options);
+        $alias = $alias ?: $name;
+        if (!isset($this->connections[$alias])) {
+            $this->connections[$alias] = $this->createConnection($name);
         }
-        return $this->connections[$name];
+        return $this->connections[$alias];
     }
 
     /**
-     * @param string $options
+     * @param string $name
      * @return ConnectionInterface
      * @throws MakeConnectionFailedException
      */
-    protected function createConnection(string $options): ConnectionInterface
+    protected function createConnection(string $name): ConnectionInterface
     {
-        /** @var ConnectionOptions $connectionOptions */
+        /** @var Connection $connectionOptions */
         if (null === ($connectionOptions =
-                $this->config->config()->get(ConnectionsConfig::TYPE_CONNECTION_OPTIONS, collect())->get($options))) {
-            throw new MakeConnectionFailedException(sprintf('Connection [%s] is missing', $options));
+                $this->config->config()->get(ConnectionsConfig::TYPE_CONNECTIONS, collect())->get($name))) {
+            throw new MakeConnectionFailedException(sprintf('Connection [%s] is missing', $name));
         }
         if (null === ($connectionOptions = DTO::toArray($connectionOptions))) {
-            throw new MakeConnectionFailedException(sprintf('Connection [%s] is broken', $options));
+            throw new MakeConnectionFailedException(sprintf('Connection [%s] is broken', $name));
         }
         if (!isset($this->connectionTypesMap[$connectionOptions['connection_type']])
             || !class_exists($this->connectionTypesMap[$connectionOptions['connection_type']])) {
