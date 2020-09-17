@@ -6,6 +6,7 @@ namespace Yetione\RabbitMQ\Configs;
 
 use Illuminate\Support\Collection;
 use Yetione\DTO\DTO;
+use Yetione\DTO\Serializer;
 use Yetione\RabbitMQ\DTO\Producer;
 
 class ProducersConfig extends AbstractConfig
@@ -16,13 +17,15 @@ class ProducersConfig extends AbstractConfig
     {
         $result = collect([]);
         $config = $this->configProvider->read();
+        $serializer = new Serializer();
         foreach ($config as $name => $parameters) {
             $parameters = array_merge(
                 $this->defaultConfig->config()->get(DefaultConfig::CONNECTABLE, collect([]))->all(),
                 $parameters
             );
             var_dump($parameters);
-            if (null !== ($object = DTO::fromArray($parameters, Producer::class))) {
+//            if (null !== ($object = DTO::fromArray($parameters, Producer::class))) {
+            if (null !== ($object = $serializer->fromArray($parameters, Producer::class))) {
                 $result->put($name, $object);
             }
         }
