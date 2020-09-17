@@ -14,26 +14,17 @@ class QueueBinding extends Binding
      * @Assert\NotBlank()
      * @SerializedName("queue")
      */
-    private $queue;
+    private Queue $queue;
 
     /**
      * QueueBind constructor.
      * @param Queue $queue
      * @param Exchange $exchange
-     * @param array|string $routingKey
-     * @param bool $nowait
-     * @param array|null $arguments
-     * @param int|null $ticket
-     * @param bool $declare
-     * @param bool $temporary
      */
-    public function __construct(
-        Queue $queue, Exchange $exchange, $routingKey='',
-        bool $nowait=false, ?array $arguments=[], ?int $ticket=null, bool $declare=true, bool $temporary=false
-    )
+    public function __construct(Queue $queue, Exchange $exchange)
     {
         $this->queue = $queue;
-        parent::__construct($exchange, $routingKey, $nowait, $arguments, $ticket, $declare, $temporary);
+        parent::__construct($exchange);
     }
 
     /**

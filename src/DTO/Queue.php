@@ -15,7 +15,7 @@ class Queue implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("name")
      */
-    private $name;
+    private string $name = '';
 
     /**
      * Если true, то при попытке создать уже существующую queue вернется успешный результат,
@@ -25,7 +25,7 @@ class Queue implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("passive")
      */
-    private $passive;
+    private bool $passive = false;
 
     /**
      * queue хранится на диске
@@ -34,7 +34,7 @@ class Queue implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("durable")
      */
-    private $durable;
+    private bool $durable = true;
 
     /**
      * Exclusive queue доступны только в пределах текущего соединения и будут удалены при закрытие соединения.
@@ -44,7 +44,7 @@ class Queue implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("exclusive")
      */
-    private $exclusive;
+    private bool $exclusive = false;
 
     /**
      * Queue удаляется, когда завершает работу её последний consumer. Если у queue небыло consumers, то она не удалится.
@@ -54,7 +54,7 @@ class Queue implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("auto_delete")
      */
-    private $autoDelete;
+    private bool $autoDelete = false;
 
     /**
      * Если true - RabbitMQ не ответит на метод. В этом случае клиент не должен ожидать ответа от сервера.
@@ -64,7 +64,7 @@ class Queue implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("nowait")
      */
-    private $nowait;
+    private bool $nowait = false;
 
     /**
      * Массив доп. аргументов queue:
@@ -89,58 +89,27 @@ class Queue implements DTOInterface
      * @Assert\Type(type={"array", "null"})
      * @SerializedName("arguments")
      */
-    private $arguments;
+    private ?array $arguments = [];
 
     /**
      * @var int|null
      * @Assert\Type(type={"int", "null"})
      */
-    private $ticket;
+    private ?int $ticket = null;
 
     /**
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("declare")
      */
-    private $declare;
+    private bool $declare = true;
 
     /**
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("temporary")
      */
-    private $temporary;
-
-    /**
-     * Queue constructor.
-     * @param string $name
-     * @param bool $passive
-     * @param bool $durable
-     * @param bool $exclusive
-     * @param bool $autoDelete
-     * @param bool $nowait
-     * @param array|null $arguments
-     * @param int|null $ticket
-     * @param bool $declare
-     * @param bool $temporary
-     */
-    public function __construct(
-        string $name='', bool $passive=false, bool $durable=true, bool $exclusive=false,
-        bool $autoDelete=false, bool $nowait=false, ?array $arguments=[], ?int $ticket=null, bool $declare=true,
-        bool $temporary=false
-    )
-    {
-        $this->name = $name;
-        $this->passive = $passive;
-        $this->durable = $durable;
-        $this->exclusive = $exclusive;
-        $this->autoDelete = $autoDelete;
-        $this->nowait = $nowait;
-        $this->arguments = $arguments;
-        $this->ticket = $ticket;
-        $this->declare = $declare;
-        $this->temporary = $temporary;
-    }
+    private bool $temporary = false;
 
     /**
      * @return string

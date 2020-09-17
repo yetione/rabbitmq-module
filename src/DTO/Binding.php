@@ -14,7 +14,7 @@ abstract class Binding implements DTOInterface
      * @Assert\Type(type="\Yetione\RabbitMQ\DTO\Exchange")
      * @SerializedName("exchnage")
      */
-    private $exchange;
+    private Exchange $exchange;
 
     /**
      * @var string|array
@@ -28,57 +28,42 @@ abstract class Binding implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("nowait")
      */
-    private $nowait;
+    private bool $nowait = false;
 
     /**
      * @var array|null
      * @Assert\Type(type={"array", "null"})
      * @SerializedName("arguments")
      */
-    private $arguments;
+    private ?array $arguments = [];
 
     /**
      * @var int|null
      * @Assert\Type(type={"int", "null"})
      */
-    private $ticket;
+    private ?int $ticket = null;
 
     /**
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("declare")
      */
-    private $declare;
+    private bool $declare = true;
 
     /**
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("temporary")
      */
-    private $temporary;
+    private bool $temporary = false;
 
     /**
      * Binding constructor.
      * @param Exchange $exchange
-     * @param array|string $routingKey
-     * @param bool $nowait
-     * @param array|null $arguments
-     * @param int|null $ticket
-     * @param bool $declare
-     * @param bool $temporary
      */
-    public function __construct(
-        Exchange $exchange, $routingKey='',
-        bool $nowait=false, ?array $arguments=[], ?int $ticket=null, bool $declare=true, bool $temporary=false
-    )
+    public function __construct(Exchange $exchange)
     {
         $this->exchange = $exchange;
-        $this->routingKey = $routingKey;
-        $this->nowait = $nowait;
-        $this->arguments = $arguments;
-        $this->ticket = $ticket;
-        $this->declare = $declare;
-        $this->temporary = $temporary;
     }
 
     /**

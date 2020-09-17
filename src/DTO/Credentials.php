@@ -15,7 +15,7 @@ class Credentials implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("username")
      */
-    private $username;
+    private string $username;
 
     /**
      * @var string
@@ -23,7 +23,7 @@ class Credentials implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("password")
      */
-    private $password;
+    private string $password;
 
     /**
      * @var string
@@ -31,19 +31,17 @@ class Credentials implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("vhost")
      */
-    private $vhost;
+    private string $vhost = '/';
 
     /**
      * Credential constructor.
      * @param string $username
      * @param string $password
-     * @param string $vhost
      */
-    public function __construct(string $username, string $password, string $vhost = '/')
+    public function __construct(string $username, string $password)
     {
         $this->username = $username;
         $this->password = $password;
-        $this->vhost = $vhost;
     }
 
     /**

@@ -19,7 +19,7 @@ class Exchange implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("name")
      */
-    private $name;
+    private string $name;
 
     /**
      * @var string
@@ -32,7 +32,7 @@ class Exchange implements DTOInterface
      * })
      * @SerializedName("type")
      */
-    private $type;
+    private string $type;
 
     /**
      * Если true, то при попытке создать уже существующий exchange вернется успешный результат,
@@ -42,7 +42,7 @@ class Exchange implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("passive")
      */
-    private $passive;
+    private bool $passive = false;
 
     /**
      * exchange хранится на диске
@@ -51,7 +51,7 @@ class Exchange implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("durable")
      */
-    private $durable;
+    private bool $durable = true;
 
     /**
      * Удалить exchange после того, как все очереди завершат работу.
@@ -60,7 +60,7 @@ class Exchange implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("auto_delete")
      */
-    private $autoDelete;
+    private bool $autoDelete = false;
 
     /**
      * Внутренний exchange. Если true, то не может использоваться для отправки сообщений.
@@ -71,7 +71,7 @@ class Exchange implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("internal")
      */
-    private $internal;
+    private bool $internal = false;
 
     /**
      * Если true - RabbitMQ не ответит на метод. В этом случае клиент не должен ожидать ответа от сервера.
@@ -81,7 +81,7 @@ class Exchange implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("nowait")
      */
-    private $nowait;
+    private bool $nowait = false;
 
     /**
      * Массив с доп. аргументами. Обычно используется для настройки альтернативных вариантов доставки сообщений.
@@ -92,28 +92,28 @@ class Exchange implements DTOInterface
      * @Assert\Type(type={"array", "null"})
      * @SerializedName("arguments")
      */
-    private $arguments;
+    private ?array $arguments = [];
 
     /**
      * @var int|null
      * @Assert\Type(type={"int", "null"})
      * @SerializedName("ticket")
      */
-    private $ticket;
+    private ?int $ticket = null;
 
     /**
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("declare")
      */
-    private $declare;
+    private bool $declare = true;
 
     /**
      * @var bool
      * @Assert\Type(type="bool")
      * @SerializedName("temporary")
      */
-    private $temporary;
+    private bool $temporary = false;
 
     /**
      * Exchange constructor.
