@@ -45,7 +45,7 @@ class ConnectionWrapper implements ConnectionInterface
 
     public function getChannel(bool $createNew=false): AMQPChannel
     {
-        if (isset($this->channel) || $createNew) {
+        if (!isset($this->channel) || $createNew) {
             $this->setChannel($this->closeChannel()->createChannel());
         }
         return $this->channel;
