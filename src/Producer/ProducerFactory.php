@@ -11,6 +11,7 @@ use Yetione\RabbitMQ\DTO\Exchange as ExchangeDTO;
 use Yetione\RabbitMQ\DTO\Producer as ProducerDTO;
 use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Exception\InvalidProducerTypeException;
+use Yetione\RabbitMQ\Exception\MakeConnectionFailedException;
 use Yetione\RabbitMQ\Exception\MakeProducerFailedException;
 
 class ProducerFactory
@@ -51,6 +52,13 @@ class ProducerFactory
         $this->producerTypesMap[$type] = $producerClass;
     }
 
+    /**
+     * @param string $name
+     * @param string|null $alias
+     * @return ProducerInterface
+     * @throws MakeConnectionFailedException
+     * @throws MakeProducerFailedException
+     */
     public function make(string $name, ?string $alias=null): ProducerInterface
     {
         $alias = $alias ?: $name;
@@ -60,6 +68,12 @@ class ProducerFactory
         return $this->producers[$alias];
     }
 
+    /**
+     * @param string $name
+     * @return ProducerInterface
+     * @throws MakeProducerFailedException
+     * @throws MakeConnectionFailedException
+     */
     protected function createProducer(string $name): ProducerInterface
     {
         /** @var ProducerDTO $producerOptions */
@@ -82,8 +96,7 @@ class ProducerFactory
             $producerOptions->getConnection(),
             $producerOptions->getConnectionAlias()
         );
-
-
-
+        $producerClass = $this->producerTypesMap[$producerOptions->getType()];
+        return new $producerClass($producerClass, $exchange, $connectionWrapper, $this->eventDispatcher);
     }
 }

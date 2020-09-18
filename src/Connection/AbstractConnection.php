@@ -54,14 +54,17 @@ abstract class AbstractConnection
      */
     protected function destroy(): void
     {
-        $this->closeChannel()->unregisterHeartbeat()->closeConnection()->cleanData();
+        $this->closeChannel()
+            ->unregisterHeartbeat()
+            ->closeConnection()
+            ->cleanData();
     }
 
     /**
      * @return AMQPChannel
      * @throws ConnectionIsNotSetupException
      */
-    public function getChannel(): AMQPChannel
+    protected function getChannel(): AMQPChannel
     {
         if (!$this->isChannelSetup()) {
             $this->setChannel($this->createChannel());
