@@ -87,7 +87,7 @@ class ConnectionWrapper implements ConnectionInterface
      */
     public function isChannelOpen(): bool
     {
-        return null !== $this->channel && $this->getChannel()->is_open();
+        return isset($this->channel) && $this->getChannel()->is_open();
     }
 
     public function registerHeartbeat(): bool
