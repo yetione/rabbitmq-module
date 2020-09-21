@@ -14,6 +14,7 @@ use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterPublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforePublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnErrorPublishingMessageEvent;
+use Yetione\RabbitMQ\Event\WithEventDispatcher;
 use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
 
 
@@ -138,5 +139,16 @@ abstract class AbstractProducer implements ProducerInterface
     public function getExchange(): ExchangeDTO
     {
         return $this->exchange;
+    }
+
+    public function getEventDispatcher(): EventDispatcherInterface
+    {
+        return $this->eventDispatcher;
+    }
+
+    public function setEventDispatcher(EventDispatcherInterface $eventDispatcher): WithEventDispatcher
+    {
+        $this->eventDispatcher = $eventDispatcher;
+        return $this;
     }
 }
