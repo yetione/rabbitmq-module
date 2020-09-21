@@ -105,7 +105,7 @@ class ProducerFactory
         return new $producerClass($producerOptions, $exchange, $connectionWrapper, $this->eventDispatcher);
     }
 
-    public function makeSafe(string $name, ?string $alias): ProducerInterface
+    public function makeSafe(string $name, ?string $alias=null): ProducerInterface
     {
         try {
             return $this->make($name, $alias);
