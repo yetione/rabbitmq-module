@@ -13,12 +13,12 @@ use Yetione\DTO\Support\MagicSetter;
  * Class Connectable
  * @package Yetione\RabbitMQ\DTO
  *
- * @method Connectable setConnection(string $connection)
- * @method Connectable setAutoReconnect(bool $autoReconnect)
- * @method Connectable setReconnectRetries(int $reconnectRetries)
- * @method Connectable setReconnectDelay(int $reconnectDelay)
- * @method Connectable setReconnectInterval(int $reconnectInterval)
- * @method Connectable setConnectionAlias(?string $connectionAlias)
+ * @property string $connection)
+ * @property bool $autoReconnect
+ * @property int $reconnectRetries
+ * @property int $reconnectDelay
+ * @property int $reconnectInterval
+ * @property ?string $connectionAlias
  */
 abstract class Connectable implements DTOInterface
 {
@@ -83,7 +83,7 @@ abstract class Connectable implements DTOInterface
 
     public function __construct(string $connection)
     {
-        $this->setConnection($connection);
+        $this->connection = $connection;
     }
 
     /**

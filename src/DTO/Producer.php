@@ -10,9 +10,9 @@ use Symfony\Component\Validator\Constraints as Assert;
  * Class Producer
  * @package Yetione\RabbitMQ\DTO
  *
- * @method Producer setExchange(string $exchange)
- * @method Producer setType(string $type)
- * @method Producer setPublishRetries(int $publishRetries)
+ * @property  string $exchange
+ * @property string $type
+ * @property int $publishRetries
  */
 class Producer extends Connectable
 {
@@ -44,7 +44,8 @@ class Producer extends Connectable
     public function __construct(string $type, string $exchange, string $connection)
     {
         parent::__construct($connection);
-        $this->setType($type)->setExchange($exchange);
+        $this->type = $type;
+        $this->exchange = $exchange;
     }
 
     /**
