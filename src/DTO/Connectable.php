@@ -32,7 +32,7 @@ abstract class Connectable implements DTOInterface
      * @Assert\Type(type="bool")
      * @SerializedName("auto_reconnect")
      */
-    private bool $autoReconnect = true;
+    protected bool $autoReconnect = true;
 
     /**
      * Максимальное число попыток восстановления соединения.
@@ -41,7 +41,7 @@ abstract class Connectable implements DTOInterface
      * @Assert\Type(type="int")
      * @SerializedName("reconnect_retries")
      */
-    private int $reconnectRetries = 5;
+    protected int $reconnectRetries = 5;
 
     /**
      * Пауза между закрытием старого и открытием нового соединения
@@ -51,7 +51,7 @@ abstract class Connectable implements DTOInterface
      * @Assert\Type(type="int")
      * @SerializedName("reconnect_delay")
      */
-    private int $reconnectDelay = 2000;
+    protected int $reconnectDelay = 2000;
 
     /**
      * Пауза между попытками восстановить соединение.
@@ -61,7 +61,7 @@ abstract class Connectable implements DTOInterface
      * @Assert\Type(type="int")
      * @SerializedName("reconnect_inteval")
      */
-    private int $reconnectInterval = 500000;
+    protected int $reconnectInterval = 500000;
 
     /**
      * Имя соединения.
@@ -70,7 +70,7 @@ abstract class Connectable implements DTOInterface
      * @Assert\Type(type="string")
      * @SerializedName("connection")
      */
-    private string $connection;
+    protected string $connection;
 
     /**
      * Алиас для соединения.
@@ -79,7 +79,7 @@ abstract class Connectable implements DTOInterface
      * @Assert\Type(type={"string", "null"})
      * @SerializedName("connection_alias")
      */
-    private ?string $connectionAlias = null;
+    protected ?string $connectionAlias = null;
 
     public function __construct(string $connection)
     {
