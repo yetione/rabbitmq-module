@@ -38,7 +38,8 @@ abstract class BasicGetConsumer extends AbstractConsumer
 
     protected function wait(array $waitTimeout)
     {
-        $iWaitingTime = $waitTimeout['seconds'] ?? 0;
-        sleep($iWaitingTime);
+        if (0 < ($iWaitingTime = $waitTimeout['seconds'] ?? 0)) {
+            sleep($iWaitingTime);
+        }
     }
 }

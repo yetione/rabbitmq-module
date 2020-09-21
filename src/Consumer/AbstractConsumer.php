@@ -60,7 +60,7 @@ abstract class AbstractConsumer implements ConsumerInterface
 
     protected int $idleTimeoutExitCode = 0;
 
-    protected ?DateTime $gracefulMaxExecutionDateTime;
+    protected ?DateTime $gracefulMaxExecutionDateTime = null;
 
     protected int $gracefulTimeoutExitCode = 0;
 
@@ -224,6 +224,7 @@ abstract class AbstractConsumer implements ConsumerInterface
              * graceful max execution timeout is being used.
              */
             if ($aWaitTimeout['timeoutType'] === Consumer::TIMEOUT_TYPE_GRACEFUL_MAX_EXECUTION && $aWaitTimeout['seconds'] < 1) {
+                // Выходим в случае, если таймаут 0
                 // TODO: Log
                 return $this->getGracefulTimeoutExitCode();
             }
@@ -540,24 +541,6 @@ abstract class AbstractConsumer implements ConsumerInterface
     protected function createQosOptions(): ?QosOptions
     {
         return null;
-    }
-
-    /**
-     * @return ConnectionInterface
-     */
-    public function getConnectionWrapper(): ConnectionInterface
-    {
-        return $this->connectionWrapper;
-    }
-
-    /**
-     * @param ConnectionInterface $connectionWrapper
-     * @return $this
-     */
-    public function setConnectionWrapper(ConnectionInterface $connectionWrapper): self
-    {
-        $this->connectionWrapper = $connectionWrapper;
-        return $this;
     }
 
     /**

@@ -5,11 +5,12 @@ namespace Yetione\RabbitMQ\Producer;
 
 
 use PhpAmqpLib\Message\AMQPMessage;
+use Yetione\RabbitMQ\Connection\ConnectableInterface;
 use Yetione\RabbitMQ\DTO\Exchange;
 use Yetione\RabbitMQ\Event\WithEventDispatcher;
 use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
 
-interface ProducerInterface extends WithEventDispatcher
+interface ProducerInterface extends WithEventDispatcher, ConnectableInterface
 {
     /**
      * @param AMQPMessage $message
