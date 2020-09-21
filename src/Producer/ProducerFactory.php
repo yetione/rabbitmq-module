@@ -97,6 +97,6 @@ class ProducerFactory
             $producerOptions->getConnectionAlias()
         );
         $producerClass = $this->producerTypesMap[$producerOptions->getType()];
-        return new $producerClass($producerClass, $exchange, $connectionWrapper, $this->eventDispatcher);
+        return new $producerClass($producerOptions, $exchange, $connectionWrapper, $this->eventDispatcher);
     }
 }
