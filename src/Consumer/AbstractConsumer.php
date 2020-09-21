@@ -32,6 +32,7 @@ use Yetione\RabbitMQ\Event\OnConsumerStart;
 use Yetione\RabbitMQ\Event\OnIdleEvent;
 use Yetione\RabbitMQ\Exception\StopConsumerException;
 use Throwable;
+use Yetione\RabbitMQ\Support\WithEventDispatcher;
 
 /**
  * TODO: Проверка памяти
@@ -43,7 +44,7 @@ use Throwable;
  */
 abstract class AbstractConsumer implements ConsumerInterface
 {
-    use InteractsWithConnection;
+    use InteractsWithConnection, WithEventDispatcher;
 
     protected string $memoryLimit = '6144M';
 
@@ -77,8 +78,6 @@ abstract class AbstractConsumer implements ConsumerInterface
 
     protected array $metrics = [];
 
-    protected EventDispatcherInterface $eventDispatcher;
-
     /**
      * AbstractConsumer constructor.
      * @param ConnectionInterface $connection
@@ -86,7 +85,7 @@ abstract class AbstractConsumer implements ConsumerInterface
      */
     public function __construct(ConnectionInterface $connection, EventDispatcherInterface $eventDispatcher)
     {
-        $this->eventDispatcher = $eventDispatcher;
+        $this->setEventDispatcher($eventDispatcher);
         $this->setConnectionWrapper($connection);
     }
 

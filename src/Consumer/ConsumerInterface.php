@@ -7,8 +7,9 @@ namespace Yetione\RabbitMQ\Consumer;
 use Exception;
 use PhpAmqpLib\Message\AMQPMessage;
 use Throwable;
+use Yetione\RabbitMQ\Event\WithEventDispatcher;
 
-interface ConsumerInterface
+interface ConsumerInterface extends WithEventDispatcher
 {
     /**
      * Метод обрабатывает сообщение из очереди и отвечает за его подтверждение.
