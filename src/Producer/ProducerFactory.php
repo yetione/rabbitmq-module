@@ -4,6 +4,7 @@
 namespace Yetione\RabbitMQ\Producer;
 
 
+use Exception;
 use Yetione\RabbitMQ\Configs\ExchangesConfig;
 use Yetione\RabbitMQ\Configs\ProducersConfig;
 use Yetione\RabbitMQ\Connection\ConnectionFactory;
@@ -29,6 +30,8 @@ class ProducerFactory
 
     protected array $producerTypesMap = [];
 
+    protected NullProducer $nullProducer;
+
     public function __construct(
         ProducersConfig $producersConfig,
         ExchangesConfig $exchangesConfig,
@@ -40,6 +43,8 @@ class ProducerFactory
         $this->exchangesConfig = $exchangesConfig;
         $this->connectionFactory = $connectionFactory;
         $this->eventDispatcher = $eventDispatcher;
+
+        $this->nullProducer = new NullProducer();
     }
 
     public function addProducerType(string $type, string $producerClass): void
@@ -98,5 +103,14 @@ class ProducerFactory
         );
         $producerClass = $this->producerTypesMap[$producerOptions->getType()];
         return new $producerClass($producerOptions, $exchange, $connectionWrapper, $this->eventDispatcher);
+    }
+
+    public function makeSafe(string $name, ?string $alias): ProducerInterface
+    {
+        try {
+            return $this->make($name, $alias);
+        } catch (Exception $e) {
+            return $this->nullProducer;
+        }
     }
 }
