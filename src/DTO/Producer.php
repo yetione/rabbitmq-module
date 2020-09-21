@@ -22,14 +22,14 @@ class Producer extends Connectable
      * @Assert\Type(type="string")
      * @SerializedName("type")
      */
-    private string $type;
+    protected string $type;
 
     /**
      * @var string
      * @Assert\Type(type="string")
      * @SerializedName("exchange")
      */
-    private string $exchange;
+    protected string $exchange;
 
     /**
      * Кол-во попыток повторной отправки сообщения.
@@ -39,7 +39,7 @@ class Producer extends Connectable
      * @Assert\GreaterThanOrEqual(0)
      * @SerializedName("publish_retries")
      */
-    private int $publishRetries = 0;
+    protected int $publishRetries = 0;
 
     public function __construct(string $type, string $exchange, string $connection)
     {
