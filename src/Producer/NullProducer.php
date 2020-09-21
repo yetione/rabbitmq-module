@@ -14,6 +14,11 @@ class NullProducer extends AbstractProducer
 
     protected MessageFactoryInterface $messageFactory;
 
+    public function __construct()
+    {
+
+    }
+
     public function publish(AMQPMessage $message, string $routingKey = '', bool $mandatory = false, bool $immediate = false, ?int $ticket = null): ProducerInterface
     {
         return $this;
