@@ -9,7 +9,7 @@ use Yetione\RabbitMQ\DTO\Exchange;
 use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
 use Yetione\RabbitMQ\Message\Factory\NullMessageFactory;
 
-class NullProducer implements ProducerInterface
+class NullProducer extends AbstractProducer
 {
 
     protected MessageFactoryInterface $messageFactory;
