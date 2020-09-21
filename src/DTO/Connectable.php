@@ -59,7 +59,7 @@ abstract class Connectable implements DTOInterface
      *
      * @var int
      * @Assert\Type(type="int")
-     * @SerializedName("reconnect_inteval")
+     * @SerializedName("reconnect_interval")
      */
     protected int $reconnectInterval = 500000;
 
