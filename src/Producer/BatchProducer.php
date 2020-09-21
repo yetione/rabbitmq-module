@@ -89,7 +89,7 @@ abstract class BatchProducer extends AbstractProducer
 
     public function getMessageFactory(): MessageFactoryInterface
     {
-        if (null === $this->messageFactory) {
+        if (!isset($this->messageFactory)) {
             $this->setMessageFactory(new NewMessageFactory());
         }
         return parent::getMessageFactory();

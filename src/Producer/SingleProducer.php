@@ -48,7 +48,7 @@ abstract class SingleProducer extends AbstractProducer
 
     public function getMessageFactory(): MessageFactoryInterface
     {
-        if (null === $this->messageFactory) {
+        if (!isset($this->messageFactory)) {
             $this->setMessageFactory(new ReusableMessageFactory());
         }
         return parent::getMessageFactory();
