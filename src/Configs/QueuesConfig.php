@@ -6,9 +6,9 @@ namespace Yetione\RabbitMQ\Configs;
 
 use Illuminate\Support\Collection;
 use Yetione\DTO\DTO;
-use Yetione\RabbitMQ\DTO\Producer;
+use Yetione\RabbitMQ\DTO\Queue;
 
-class ProducersConfig extends AbstractConfig
+class QueuesConfig extends AbstractConfig
 {
     use WithDefaultConfig;
 
@@ -18,10 +18,10 @@ class ProducersConfig extends AbstractConfig
         $config = $this->configProvider->read();
         foreach ($config as $name => $parameters) {
             $parameters = array_merge(
-                $this->defaultConfig->config()->get(DefaultConfig::CONNECTABLE, collect([]))->all(),
+                $this->defaultConfig->config()->get(DefaultConfig::QUEUE, collect([]))->all(),
                 $parameters
             );
-            if (null !== ($object = DTO::fromArray($parameters, Producer::class))) {
+            if (null !== ($object = DTO::fromArray($parameters, Queue::class))) {
                 $result->put($name, $object);
             }
         }
