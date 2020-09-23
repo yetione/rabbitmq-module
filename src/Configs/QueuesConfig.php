@@ -21,10 +21,17 @@ class QueuesConfig extends AbstractConfig
                 $this->defaultConfig->config()->get(DefaultConfig::QUEUE, collect([]))->all(),
                 $parameters
             );
-            if (null !== ($object = DTO::fromArray($parameters, Queue::class))) {
+            if (null !== ($object = $this->make($parameters))) {
                 $result->put($name, $object);
             }
         }
+        return $result;
+    }
+
+    public function make(array $parameters): ?Queue
+    {
+        /** @var Queue|null $result */
+        $result = DTO::fromArray($parameters, Queue::class);
         return $result;
     }
 }
