@@ -14,6 +14,7 @@ use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Exception\InvalidProducerTypeException;
 use Yetione\RabbitMQ\Exception\MakeConnectionFailedException;
 use Yetione\RabbitMQ\Exception\MakeProducerFailedException;
+use Yetione\RabbitMQ\Logger\LoggerProviderInterface;
 
 class ProducerFactory
 {
@@ -28,6 +29,8 @@ class ProducerFactory
 
     protected EventDispatcherInterface $eventDispatcher;
 
+    protected LoggerProviderInterface $loggerProvider;
+
     protected array $producerTypesMap = [];
 
     protected NullProducer $nullProducer;
@@ -36,13 +39,15 @@ class ProducerFactory
         ProducersConfig $producersConfig,
         ExchangesConfig $exchangesConfig,
         ConnectionFactory $connectionFactory,
-        EventDispatcherInterface $eventDispatcher
+        EventDispatcherInterface $eventDispatcher,
+        LoggerProviderInterface $loggerProvider
     )
     {
         $this->producersConfig = $producersConfig;
         $this->exchangesConfig = $exchangesConfig;
         $this->connectionFactory = $connectionFactory;
         $this->eventDispatcher = $eventDispatcher;
+        $this->loggerProvider = $loggerProvider;
 
         $this->nullProducer = new NullProducer();
     }
@@ -111,7 +116,10 @@ class ProducerFactory
             $producerOptions->getConnectionAlias()
         );
         $producerClass = $this->producerTypesMap[$producerOptions->getType()];
-        return new $producerClass($producerOptions, $exchange, $connectionWrapper, $this->eventDispatcher);
+        /** @var AbstractProducer $result */
+        $result = new $producerClass($producerOptions, $exchange, $connectionWrapper, $this->eventDispatcher);
+        $result->setLoggerProvider($this->loggerProvider);
+        return $result;
     }
 
     /**

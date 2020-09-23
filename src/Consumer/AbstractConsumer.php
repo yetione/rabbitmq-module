@@ -14,6 +14,7 @@ use PhpAmqpLib\Exception\AMQPOutOfBoundsException;
 use PhpAmqpLib\Exception\AMQPRuntimeException;
 use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Message\AMQPMessage;
+use Yetione\DTO\DTO;
 use Yetione\RabbitMQ\Connection\ConnectionInterface;
 use Yetione\RabbitMQ\Connection\InteractsWithConnection;
 use Yetione\RabbitMQ\Constant\Consumer;
@@ -32,6 +33,8 @@ use Yetione\RabbitMQ\Event\OnConsumerStart;
 use Yetione\RabbitMQ\Event\OnIdleEvent;
 use Yetione\RabbitMQ\Exception\StopConsumerException;
 use Throwable;
+use Yetione\RabbitMQ\Logger\Loggable;
+use Yetione\RabbitMQ\Logger\WithLogger;
 use Yetione\RabbitMQ\Support\WithEventDispatcher;
 use Yetione\RabbitMQ\DTO\Consumer as ConsumerDTO;
 
@@ -43,9 +46,9 @@ use Yetione\RabbitMQ\DTO\Consumer as ConsumerDTO;
  * Class AbstractConsumer
  * @package RabbitMQ\Consumer
  */
-abstract class AbstractConsumer implements ConsumerInterface
+abstract class AbstractConsumer implements ConsumerInterface, Loggable
 {
-    use InteractsWithConnection, WithEventDispatcher;
+    use InteractsWithConnection, WithEventDispatcher, WithLogger;
 
     protected string $memoryLimit = '6144M';
 
@@ -111,7 +114,7 @@ abstract class AbstractConsumer implements ConsumerInterface
             $oEvent = (new OnAfterProcessingMessageEvent())->setConsumer($this)->setMessage($message);
             $this->eventDispatcher->dispatch($oEvent);
         } catch (StopConsumerException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             $this->handleProcessResult($message, $e->getResultCode());
             $oEvent = (new OnAfterProcessingMessageEvent())
                 ->setConsumer($this)
@@ -120,7 +123,7 @@ abstract class AbstractConsumer implements ConsumerInterface
             $this->eventDispatcher->dispatch($oEvent);
             $this->stop();
         } catch (Exception | Throwable $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             $oEvent = (new OnAfterProcessingMessageEvent())
                 ->setConsumer($this)
                 ->setMessage($message)
@@ -165,18 +168,18 @@ abstract class AbstractConsumer implements ConsumerInterface
         try {
             $this->getConsumerTag();
         } catch (Exception | Throwable $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             return -1;
         }
         $this->metrics['start_time'] = microtime(true);
         $this->metrics['start_date'] = new DateTime();
         $this->metrics['connection_class'] = get_class($this->getConnectionWrapper()->getConnection());
 
-        // TODO: Log
+        $this->getLogger()->debug('Start consumer', ['options'=>DTO::toArray($this->options)]);
         gc_enable();
         try {
             if (!$this->setup()) {
-                // TODO: Log
+                $this->getLogger()->error('Consumer setup failed', ['options'=>DTO::toArray($this->options)]);
                 return -1;
             }
             $oEvent = (new OnConsumerStart())->setConsumer($this);
@@ -194,10 +197,10 @@ abstract class AbstractConsumer implements ConsumerInterface
             $this->metrics['end_time'] = microtime(true);
             $this->metrics['execution_time'] = $this->metrics['end_time'] - $this->metrics['start_time'];
             $this->metrics['end_date'] = new DateTime();
-            // TODO: Log
+            $this->getLogger()->debug('Consumer finished', ['options'=>DTO::toArray($this->options)]);
         } catch (Exception | Throwable $e) {
             $this->metrics['end_time'] = microtime(true); $this->metrics['end_date'] = new DateTime();
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             $iResult = (int) $e->getCode();
         }
         return $iResult;
@@ -213,7 +216,7 @@ abstract class AbstractConsumer implements ConsumerInterface
      */
     protected function consume()
     {
-        // TODO: Log
+        $this->getLogger()->debug('Start consume', ['options'=>DTO::toArray($this->options)]);
         while ($this->nextIteration()) {
             $oEvent = (new OnConsumeEvent())->setConsumer($this);
             $this->eventDispatcher->dispatch($oEvent);
@@ -221,7 +224,7 @@ abstract class AbstractConsumer implements ConsumerInterface
             try {
                 $aWaitTimeout = $this->chooseWaitTimeout();
             } catch (Exception $e) {
-                // TODO: Log
+                $this->getLogger()->error($e->getMessage());
                 return $this->getUnexpectedErrorExitCode();
             }
 
@@ -231,7 +234,7 @@ abstract class AbstractConsumer implements ConsumerInterface
              */
             if ($aWaitTimeout['timeoutType'] === Consumer::TIMEOUT_TYPE_GRACEFUL_MAX_EXECUTION && $aWaitTimeout['seconds'] < 1) {
                 // Выходим в случае, если таймаут 0
-                // TODO: Log
+                $this->getLogger()->debug('End consumer graceful', ['options'=>DTO::toArray($this->options)]);
                 return $this->getGracefulTimeoutExitCode();
             }
 
@@ -240,7 +243,7 @@ abstract class AbstractConsumer implements ConsumerInterface
                     $this->wait($aWaitTimeout);
                 } catch (AMQPTimeoutException | ErrorException | AMQPOutOfBoundsException | AMQPRuntimeException $e) {
                     if (Consumer::TIMEOUT_TYPE_GRACEFUL_MAX_EXECUTION === $aWaitTimeout['timeoutType']) {
-                        // TODO: Log
+                        $this->getLogger()->error($e->getMessage());
                         return $this->getGracefulTimeoutExitCode();
                     }
                     /** @var OnIdleEvent $oEvent */
@@ -249,13 +252,13 @@ abstract class AbstractConsumer implements ConsumerInterface
                             ->setConsumer($this)
                             ->setParams(['timeout' => $aWaitTimeout['seconds'], 'forceStop' => $this->isForceStop()]);
                     } catch (InvalidArgumentException $e) {
-                        // TODO: Log
+                        $this->getLogger()->error($e->getMessage());
                         return $this->getIdleTimeoutExitCode();
                     }
                     $this->eventDispatcher->dispatch($oEvent);
                     if ($oEvent->isForceStop()) {
                         if (null !== $this->getIdleTimeoutExitCode()) {
-                            // TODO: Log
+                            $this->getLogger()->debug('End consumer IDLE', ['options'=>DTO::toArray($this->options)]);
                             return $this->getIdleTimeoutExitCode();
                         } else {
                             throw $e;
@@ -302,7 +305,7 @@ abstract class AbstractConsumer implements ConsumerInterface
             $this->setupEvents();
             return true;
         } catch (Exception | Throwable $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
         }
         return false;
     }
@@ -398,7 +401,7 @@ abstract class AbstractConsumer implements ConsumerInterface
                 $oChannel->basic_ack($sDeliveryTag);
                 break;
             default:
-                // TODO: Log
+                $this->getLogger()->error('Invalid code from process message', ['code'=>$processResult, 'message'=>$message]);
                 break;
         }
         $this->consumedMessages++;

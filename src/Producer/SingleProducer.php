@@ -30,7 +30,7 @@ abstract class SingleProducer extends AbstractProducer
             $this->channel()
                 ->basic_publish($message, $oExchange->getName(), $routingKey, $mandatory, $immediate, $ticket);
         } catch (AMQPConnectionClosedException | AMQPChannelClosedException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             $this->maybeReconnect();
             if ($this->isNeedRetry()) {
                 return $this->publish($message, $routingKey, $mandatory, $immediate, $ticket);
@@ -38,7 +38,7 @@ abstract class SingleProducer extends AbstractProducer
             $this->afterPublish($message, $e);
             return $this;
         } catch (AMQPConnectionBlockedException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             $this->afterPublish($message, $e);
             return $this;
         }

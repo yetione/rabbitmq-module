@@ -21,7 +21,7 @@ abstract class BasicConsumeConsumer extends AbstractConsumer
         try {
             $this->channel()->basic_cancel($this->getConsumerTag(), false, true);
         } catch (AMQPTimeoutException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
         }
         parent::stop();
     }

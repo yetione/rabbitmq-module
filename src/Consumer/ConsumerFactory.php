@@ -12,6 +12,7 @@ use Yetione\RabbitMQ\Exception\InvalidConsumerTypeException;
 use Yetione\RabbitMQ\DTO\Consumer as ConsumerDTO;
 use Yetione\RabbitMQ\Exception\MakeConnectionFailedException;
 use Yetione\RabbitMQ\Exception\MakeConsumerFailedException;
+use Yetione\RabbitMQ\Logger\LoggerProviderInterface;
 
 class ConsumerFactory
 {
@@ -21,6 +22,8 @@ class ConsumerFactory
 
     protected EventDispatcherInterface $eventDispatcher;
 
+    protected LoggerProviderInterface $loggerProvider;
+
     protected array $consumerTypesMap;
 
     /** @var ConsumerInterface[] */
@@ -29,12 +32,14 @@ class ConsumerFactory
     public function __construct(
         ConsumersConfig $consumersConfig,
         ConnectionFactory $connectionFactory,
-        EventDispatcherInterface $eventDispatcher
+        EventDispatcherInterface $eventDispatcher,
+        LoggerProviderInterface $loggerProvider
     )
     {
         $this->consumersConfig = $consumersConfig;
         $this->connectionFactory = $connectionFactory;
         $this->eventDispatcher = $eventDispatcher;
+        $this->loggerProvider = $loggerProvider;
         $this->consumerTypesMap = [];
     }
 
@@ -96,7 +101,10 @@ class ConsumerFactory
             $consumerOptions->getConnectionAlias()
         );
         $consumerClass = $this->consumerTypesMap[$consumerOptions->getType()];
-        return new $consumerClass($consumerOptions, $connectionWrapper, $this->eventDispatcher);
+        /** @var AbstractConsumer $result */
+        $result = new $consumerClass($consumerOptions, $connectionWrapper, $this->eventDispatcher);
+        $result->setLoggerProvider($this->loggerProvider);
+        return $result;
     }
 
     /**

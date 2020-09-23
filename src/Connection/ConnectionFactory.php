@@ -15,6 +15,7 @@ use Yetione\RabbitMQ\Exception\InvalidConnectionTypeException;
 use Yetione\RabbitMQ\Exception\MakeConnectionFailedException;
 use Yetione\RabbitMQ\Constant\Connection as ConnectionEnum;
 use PhpAmqpLib\Connection\AbstractConnection as AMQPAbstractConnection;
+use Yetione\RabbitMQ\Logger\LoggerProviderInterface;
 
 class ConnectionFactory
 {
@@ -25,11 +26,14 @@ class ConnectionFactory
 
     protected ConnectionsConfig $config;
 
+    protected LoggerProviderInterface $loggerProvider;
+
     protected array $connectionTypesMap = [];
 
-    public function __construct(ConnectionsConfig $config)
+    public function __construct(ConnectionsConfig $config, LoggerProviderInterface $loggerProvider)
     {
         $this->config = $config;
+        $this->loggerProvider = $loggerProvider;
         $this->registerConnectionTypes();
     }
 
@@ -92,7 +96,9 @@ class ConnectionFactory
         } catch (Exception $e) {
             throw new MakeConnectionFailedException($e->getMessage(), $e->getCode(), $e->getPrevious());
         }
-        return new ConnectionWrapper($AMQPConnection);
+        $result = new ConnectionWrapper($AMQPConnection);
+        $result->setLoggerProvider($this->loggerProvider);
+        return $result;
     }
 
     /**

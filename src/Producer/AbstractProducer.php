@@ -14,6 +14,8 @@ use Yetione\RabbitMQ\Event\EventDispatcherInterface;
 use Yetione\RabbitMQ\Event\OnAfterPublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnBeforePublishingMessageEvent;
 use Yetione\RabbitMQ\Event\OnErrorPublishingMessageEvent;
+use Yetione\RabbitMQ\Logger\Loggable;
+use Yetione\RabbitMQ\Logger\WithLogger;
 use Yetione\RabbitMQ\Message\Factory\MessageFactoryInterface;
 use Yetione\RabbitMQ\Support\WithEventDispatcher;
 
@@ -23,9 +25,9 @@ use Yetione\RabbitMQ\Support\WithEventDispatcher;
  * Class AbstractProducer
  * @package Yetione\RabbitMQ\Producer
  */
-abstract class AbstractProducer implements ProducerInterface
+abstract class AbstractProducer implements ProducerInterface, Loggable
 {
-    use InteractsWithConnection, WithEventDispatcher;
+    use InteractsWithConnection, WithEventDispatcher, WithLogger;
 
     protected MessageFactoryInterface $messageFactory;
 

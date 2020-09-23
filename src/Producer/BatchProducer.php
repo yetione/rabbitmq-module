@@ -66,14 +66,14 @@ abstract class BatchProducer extends AbstractProducer
                 $this->eventDispatcher->dispatch((new OnAfterFlushingMessageEvent())->setProducer($this));
                 $this->resetCurrentBatch();
             } catch (AMQPConnectionClosedException | AMQPChannelClosedException $e) {
-                // TODO: Log
+                $this->getLogger()->error($e->getMessage());
                 $this->maybeReconnect();
                 if ($this->isNeedRetry()) {
                     return $this->flushMessage($force);
                 }
                 $this->eventDispatcher->dispatch((new OnErrorFlushingMessageEvent())->setProducer($this)->setParams(['error'=>$e]));
             } catch (AMQPConnectionBlockedException $e) {
-                // TODO: Log
+                $this->getLogger()->error($e->getMessage());
                 $this->eventDispatcher->dispatch((new OnErrorFlushingMessageEvent())->setProducer($this)->setParams(['error'=>$e]));
             }
             $this->resetPublishTries();
