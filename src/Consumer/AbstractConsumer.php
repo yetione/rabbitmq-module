@@ -320,7 +320,7 @@ abstract class AbstractConsumer implements ConsumerInterface
      */
     protected function setupExchange()
     {
-        if (null !== ($oExchange=$this->getExchange())) {
+        if (isset($this->exchange) && null !== ($oExchange=$this->getExchange())) {
             $this->getConnectionWrapper()->declareExchange($oExchange);
         }
     }
@@ -338,7 +338,7 @@ abstract class AbstractConsumer implements ConsumerInterface
      */
     protected function setupBinding()
     {
-        if (null !== ($oBinding=$this->getBinding())) {
+        if (isset($this->binding) && null !== ($oBinding=$this->getBinding())) {
             if ($oBinding instanceof QueueBinding) {
                 $this->getConnectionWrapper()->declareQueueBinding($oBinding);
             } elseif ($oBinding instanceof ExchangeBinding) {
@@ -360,7 +360,7 @@ abstract class AbstractConsumer implements ConsumerInterface
      */
     protected function setupQosOptions()
     {
-        if (null !== ($oQosOptions=$this->getQosOptions())) {
+        if (isset($this->qosOptions) && null !== ($oQosOptions=$this->getQosOptions())) {
             $this->getConnectionWrapper()->declareQosOptions($oQosOptions);
         }
     }
