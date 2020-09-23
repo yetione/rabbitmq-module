@@ -7,9 +7,4 @@ namespace Yetione\RabbitMQ\Event;
 class OnConsumeEvent extends ConsumerEvent
 {
     protected $name = ConsumerEvent::ON_CONSUME;
-
-    public function __construct()
-    {
-        parent::__construct(ConsumerEvent::ON_CONSUME);
-    }
 }
