@@ -40,7 +40,9 @@ trait InteractsWithConnection
 
     protected function close(): self
     {
-        $this->getConnectionWrapper()->close();
+        if (isset($this->connectionWrapper)) {
+            $this->getConnectionWrapper()->close();
+        }
         return $this;
     }
 
