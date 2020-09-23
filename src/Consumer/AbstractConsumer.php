@@ -180,12 +180,13 @@ abstract class AbstractConsumer implements ConsumerInterface
                 return -1;
             }
             $oEvent = (new OnConsumerStart())->setConsumer($this);
-            $oStartResult = $this->eventDispatcher->dispatch($oEvent);
-            if ($oStartResult->stopped()) {
-                $this->stop();
-                // TODO: Log
-                return -1;
-            }
+            $this->eventDispatcher->dispatch($oEvent);
+//            $oStartResult = $this->eventDispatcher->dispatch($oEvent);
+//            if ($oStartResult->stopped()) {
+//                $this->stop();
+//                // TODO: Log
+//                return -1;
+//            }
             $iResult = $this->consume();
             $oEvent = (new OnConsumerFinish())->setConsumer($this);
             $this->eventDispatcher->dispatch($oEvent);
