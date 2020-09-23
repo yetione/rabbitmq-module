@@ -33,6 +33,7 @@ use Yetione\RabbitMQ\Event\OnIdleEvent;
 use Yetione\RabbitMQ\Exception\StopConsumerException;
 use Throwable;
 use Yetione\RabbitMQ\Support\WithEventDispatcher;
+use Yetione\RabbitMQ\DTO\Consumer as ConsumerDTO;
 
 /**
  * TODO: Проверка памяти
@@ -78,13 +79,17 @@ abstract class AbstractConsumer implements ConsumerInterface
 
     protected array $metrics = [];
 
+    protected ConsumerDTO $options;
+
     /**
      * AbstractConsumer constructor.
+     * @param ConsumerDTO $options
      * @param ConnectionInterface $connection
      * @param EventDispatcherInterface $eventDispatcher
      */
-    public function __construct(ConnectionInterface $connection, EventDispatcherInterface $eventDispatcher)
+    public function __construct(ConsumerDTO $options, ConnectionInterface $connection, EventDispatcherInterface $eventDispatcher)
     {
+        $this->options = $options;
         $this->setEventDispatcher($eventDispatcher);
         $this->setConnectionWrapper($connection);
     }
@@ -540,7 +545,7 @@ abstract class AbstractConsumer implements ConsumerInterface
 
     protected function createQosOptions(): ?QosOptions
     {
-        return null;
+        return $this->options->getQos();
     }
 
     /**

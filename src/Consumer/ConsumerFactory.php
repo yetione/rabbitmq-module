@@ -96,7 +96,7 @@ class ConsumerFactory
             $consumerOptions->getConnectionAlias()
         );
         $consumerClass = $this->consumerTypesMap[$consumerOptions->getType()];
-        return new $consumerClass($connectionWrapper, $this->eventDispatcher);
+        return new $consumerClass($consumerOptions, $connectionWrapper, $this->eventDispatcher);
     }
 
     /**
