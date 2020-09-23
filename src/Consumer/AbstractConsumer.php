@@ -216,7 +216,7 @@ abstract class AbstractConsumer implements ConsumerInterface, Loggable
      */
     protected function consume()
     {
-        $this->getLogger()->debug('Start consume', ['options'=>DTO::toArray($this->options)]);
+        $this->getLogger()->debug('Begin consuming messages', ['options'=>DTO::toArray($this->options)]);
         while ($this->nextIteration()) {
             $oEvent = (new OnConsumeEvent())->setConsumer($this);
             $this->eventDispatcher->dispatch($oEvent);
