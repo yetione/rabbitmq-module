@@ -17,11 +17,7 @@ class QueuesConfig extends AbstractConfig
         $result = collect([]);
         $config = $this->configProvider->read();
         foreach ($config as $name => $parameters) {
-            $parameters = array_merge(
-                $this->defaultConfig->config()->get(DefaultConfig::QUEUE, collect([]))->all(),
-                $parameters
-            );
-            if (null !== ($object = $this->make($parameters))) {
+            if (null !== ($object = $this->make($this->buildParameters(DefaultConfig::QUEUE, $parameters)))) {
                 $result->put($name, $object);
             }
         }

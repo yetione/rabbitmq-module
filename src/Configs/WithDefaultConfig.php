@@ -15,4 +15,12 @@ trait WithDefaultConfig
         $this->defaultConfig = $defaultConfig;
         parent::__construct($configProvider);
     }
+
+    protected function buildParameters(string $type, array $parameters): array
+    {
+        return array_merge(
+            $this->defaultConfig->config()->get($type, collect([]))->all(),
+            $parameters
+        );
+    }
 }

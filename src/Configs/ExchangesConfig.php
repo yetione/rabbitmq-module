@@ -17,7 +17,7 @@ class ExchangesConfig extends AbstractConfig
         $result = collect([]);
         $config = $this->configProvider->read();
         foreach ($config as $name => $parameters) {
-            if (null !== ($object = $this->make($parameters))) {
+            if (null !== ($object = $this->make($this->buildParameters(DefaultConfig::EXCHANGE, $parameters)))) {
                 $result->put($name, $object);
             }
         }
