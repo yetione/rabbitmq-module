@@ -284,7 +284,7 @@ class ConnectionWrapper implements ConnectionInterface
                     return false;
                 }
             }
-
+            return true;
         }
         return false;
     }
