@@ -29,7 +29,7 @@ class QosOptions implements DTOInterface
      * @Assert\Type({"bool", "null"})
      * @SerializedName("global")
      */
-    private ?bool $global = false;
+    private ?bool $global = null;
 
     /**
      * @return int|null
