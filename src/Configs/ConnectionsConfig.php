@@ -6,6 +6,7 @@ namespace Yetione\RabbitMQ\Configs;
 
 use Illuminate\Support\Collection;
 use Yetione\DTO\DTO;
+use Yetione\DTO\DTOInterface;
 use Yetione\RabbitMQ\DTO\Connection;
 use Yetione\RabbitMQ\DTO\Credentials;
 use Yetione\RabbitMQ\DTO\Node;
@@ -51,7 +52,7 @@ class ConnectionsConfig extends AbstractConfig
 //                        $value = array_merge($defaultConnectionParameters, $value);
 //                        break;
                 }
-                if (null !== ($object = DTO::fromArray($value, $itemClass))) {
+                if (null !== ($object = $this->make($type, $value))) {
                     $items->put($key, $object);
                 }
             }
@@ -61,5 +62,13 @@ class ConnectionsConfig extends AbstractConfig
             $result->put(self::CONNECTION_TYPES, $config[self::CONNECTION_TYPES]);
         }
         return $result;
+    }
+
+    public function make(string $type, array $parameters): ?DTOInterface
+    {
+        if (isset($this->configTypes[$type])) {
+            return DTO::fromArray($parameters, $this->configTypes[$type]);
+        }
+        return null;
     }
 }

@@ -21,10 +21,17 @@ class ProducersConfig extends AbstractConfig
                 $this->defaultConfig->config()->get(DefaultConfig::CONNECTABLE, collect([]))->all(),
                 $parameters
             );
-            if (null !== ($object = DTO::fromArray($parameters, Producer::class))) {
+            if (null !== ($object = $this->make($parameters))) {
                 $result->put($name, $object);
             }
         }
+        return $result;
+    }
+
+    public function make(array $parameters): ?Producer
+    {
+        /** @var Producer|null $result */
+        $result = DTO::fromArray($parameters, Producer::class);
         return $result;
     }
 }

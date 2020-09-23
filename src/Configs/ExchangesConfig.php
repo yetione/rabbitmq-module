@@ -17,10 +17,17 @@ class ExchangesConfig extends AbstractConfig
         $result = collect([]);
         $config = $this->configProvider->read();
         foreach ($config as $name => $parameters) {
-            if (null !== ($object = DTO::fromArray($parameters, Exchange::class))) {
+            if (null !== ($object = $this->make($parameters))) {
                 $result->put($name, $object);
             }
         }
+        return $result;
+    }
+
+    public function make(array $parameters): ?Exchange
+    {
+        /** @var Exchange|null $result */
+        $result = DTO::fromArray($parameters, Exchange::class);
         return $result;
     }
 }
