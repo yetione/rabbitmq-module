@@ -15,21 +15,21 @@ class QosOptions implements DTOInterface
      * @Assert\Type({"int", "null"})
      * @SerializedName("prefetch_size")
      */
-    private ?int $prefetchSize;
+    private ?int $prefetchSize = null;
 
     /**
      * @var int|null
      * @Assert\Type({"int", "null"})
      * @SerializedName("prefetch_count")
      */
-    private ?int $prefetchCount;
+    private ?int $prefetchCount = null;
 
     /**
      * @var bool|null
      * @Assert\Type({"bool", "null"})
      * @SerializedName("global")
      */
-    private ?bool $global;
+    private ?bool $global = false;
 
     /**
      * @return int|null
