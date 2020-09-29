@@ -5,17 +5,17 @@ namespace Yetione\RabbitMQ\Connection;
 
 
 use Exception;
+use InvalidArgumentException;
 use PhpAmqpLib\Connection\AbstractConnection;
-use PhpAmqpLib\Connection\AMQPLazyConnection;
-use PhpAmqpLib\Connection\AMQPStreamConnection;
-use PhpAmqpLib\Connection\Heartbeat\PCNTLHeartbeatSender;
-use PhpAmqpLib\Exception\AMQPRuntimeException;
 use Yetione\DTO\DTO;
 use Yetione\RabbitMQ\Configs\ConnectionsConfig;
-use Yetione\RabbitMQ\Constant\Connection;
-use Yetione\RabbitMQ\DTO\ConnectionOptions;
+use Yetione\RabbitMQ\DTO\Connection;
 use Yetione\RabbitMQ\DTO\Node;
+use Yetione\RabbitMQ\Exception\InvalidConnectionTypeException;
 use Yetione\RabbitMQ\Exception\MakeConnectionFailedException;
+use Yetione\RabbitMQ\Constant\Connection as ConnectionEnum;
+use PhpAmqpLib\Connection\AbstractConnection as AMQPAbstractConnection;
+use Yetione\RabbitMQ\Logger\LoggerProviderInterface;
 
 class ConnectionFactory
 {
@@ -26,66 +26,173 @@ class ConnectionFactory
 
     protected ConnectionsConfig $config;
 
-    protected array $connectionTypesMap = [
-        Connection::TYPE_NORMAL => AMQPStreamConnection::class,
-        Connection::TYPE_LAZY => AMQPLazyConnection::class
-    ];
+    protected LoggerProviderInterface $loggerProvider;
 
-    public function __construct(ConnectionsConfig $config)
+    protected array $connectionTypesMap = [];
+
+    public function __construct(ConnectionsConfig $config, LoggerProviderInterface $loggerProvider)
     {
         $this->config = $config;
+        $this->loggerProvider = $loggerProvider;
+        $this->registerConnectionTypes();
     }
 
-    /**
-     * @param string $options
-     * @param string|null $name
-     * @return ConnectionInterface
-     * @throws MakeConnectionFailedException
-     */
-    public function make(string $options, ?string $name=null): ConnectionInterface
+    protected function registerConnectionTypes(): void
     {
-        $name = $name ?: $options;
-        if (!isset($this->connections[$name])) {
-            $this->connections[$name] = $this->createConnection($options);
+        $connectionTypes = $this->config->config()->get(ConnectionsConfig::CONNECTION_TYPES, []);
+        foreach ($connectionTypes as $type => $connectionClass) {
+            $this->addConnectionType($type, $connectionClass);
         }
-        return $this->connections[$name];
     }
 
-    /**
-     * @param string $options
-     * @return ConnectionInterface
-     * @throws MakeConnectionFailedException
-     */
-    protected function createConnection(string $options): ConnectionInterface
+    public function addConnectionType(string $type, string $connectionClass): void
     {
-        /** @var ConnectionOptions $connectionOptions */
-        if (null === ($connectionOptions =
-                $this->config->config()->get(ConnectionsConfig::TYPE_CONNECTION_OPTIONS, collect())->get($options))) {
-            throw new MakeConnectionFailedException(sprintf('Connection [%s] is missing', $options));
-        }
-        if (null === ($connectionOptions = DTO::toArray($connectionOptions))) {
-            throw new MakeConnectionFailedException(sprintf('Connection [%s] is broken', $options));
-        }
-        if (!isset($this->connectionTypesMap[$connectionOptions['connection_type']])
-            || !class_exists($this->connectionTypesMap[$connectionOptions['connection_type']])) {
-            throw new MakeConnectionFailedException(
-                sprintf('Connection type [%s] is not registered', $connectionOptions['connection_type'])
+        if (!class_exists($connectionClass) || !is_subclass_of($connectionClass, AMQPAbstractConnection::class)) {
+            throw new InvalidConnectionTypeException(
+                sprintf('Connection type\'s [%s] class [%s] must exists and extend [%s]',
+                    $type, $connectionClass, AMQPAbstractConnection::class)
             );
         }
-        /** @var AbstractConnection|string $connectionClass */
-        $connectionClass = $this->connectionTypesMap[$connectionOptions['connection_type']];
+        $this->connectionTypesMap[$type] = $connectionClass;
+    }
+
+    /**
+     * @param string $name
+     * @param string|null $alias
+     * @return ConnectionInterface
+     * @throws MakeConnectionFailedException
+     */
+    public function make(string $name, ?string $alias=null): ConnectionInterface
+    {
+        $alias = $alias ?: $name;
+        if (!isset($this->connections[$alias])) {
+            $this->connections[$alias] = $this->createConnection($name);
+        }
+        return $this->connections[$alias];
+    }
+
+    /**
+     * @param string $name
+     * @return ConnectionInterface
+     * @throws MakeConnectionFailedException
+     */
+    protected function createConnection(string $name): ConnectionInterface
+    {
+        /** @var Connection $connectionOptions */
+        if (null === ($connectionOptions =
+                $this->config->config()->get(ConnectionsConfig::TYPE_CONNECTIONS, collect())->get($name))) {
+            throw new MakeConnectionFailedException(sprintf('Connection [%s] is missing', $name));
+        }
+//        if (null === ($connectionOptions = DTO::toArray($connectionOptions))) {
+//            throw new MakeConnectionFailedException(sprintf('Connection [%s] is broken', $name));
+//        }
+        if (!isset($this->connectionTypesMap[$connectionOptions->getConnectionType()])) {
+            throw new MakeConnectionFailedException(
+                sprintf('Connection\' type [%s] is not registered', $connectionOptions->getConnectionType())
+            );
+        }
         try {
-            $AMQPConnection = $connectionClass::create_connection($this->getNodes(), $connectionOptions);
+            $AMQPConnection = $this->createAMQPConnection($connectionOptions);
         } catch (Exception $e) {
             throw new MakeConnectionFailedException($e->getMessage(), $e->getCode(), $e->getPrevious());
         }
-        if (isset($connectionOptions['heartbeat']) && 0 < $connectionOptions['heartbeat']) {
-            try {
-                $heartbeatSender = new PCNTLHeartbeatSender($AMQPConnection);
-                $heartbeatSender->register();
-            } catch (AMQPRuntimeException $e) {}
+        $result = new ConnectionWrapper($AMQPConnection);
+        $result->setLoggerProvider($this->loggerProvider);
+        return $result;
+    }
+
+    /**
+     * @param Connection $connectionOptions
+     * @return AbstractConnection
+     * @throws Exception
+     */
+    protected function createAMQPConnection(Connection $connectionOptions): AbstractConnection
+    {
+        return $this->createAMQPConnectionResolver($connectionOptions)();
+    }
+
+    protected function createAMQPConnectionResolver(Connection $connectionOptions): callable
+    {
+        $nodes = $this->getNodes();
+        if (1 < count($nodes)) {
+            throw new InvalidArgumentException('An array of hosts are required when attempting to create a connection.');
         }
-        return new ConnectionWrapper($AMQPConnection);
+        $connectionClass = $this->connectionTypesMap[$connectionOptions->getConnectionType()];
+        return static function () use($connectionOptions, $connectionClass, $nodes): AbstractConnection {
+            $connectionType = $connectionOptions->getConnectionType();
+            foreach ($nodes as $node) {
+                switch ($connectionType) {
+                    case ConnectionEnum::TYPE_STREAM_LAZY:
+                    case ConnectionEnum::TYPE_STREAM_NORMAL:
+                        try {
+                            return new $connectionClass(
+                                $node['host'], $node['port'], $node['user'], $node['password'], $node['vhost'],
+                                $connectionOptions->isInsist(),
+                                $connectionOptions->getLoginMethod(),
+                                $connectionOptions->getLoginResponse(),
+                                $connectionOptions->getLocale(),
+                                $connectionOptions->getConnectionTimeout(),
+                                $connectionOptions->getReadWriteTimeout(),
+                                $connectionOptions->getContext(),
+                                $connectionOptions->isKeepalive(),
+                                $connectionOptions->getHeartbeat(),
+                                $connectionOptions->getChannelRpcTimeout(),
+                                $connectionOptions->getSslProtocol(),
+                            );
+                        } catch (Exception $e) {
+                            $lastException = $e;
+                        }
+                        break;
+                    case ConnectionEnum::TYPE_SOCKET_NORMAL:
+                    case ConnectionEnum::TYPE_SOCKET_LAZY:
+                        try {
+                            return new $connectionClass(
+                                $node['host'], $node['port'], $node['user'], $node['password'], $node['vhost'],
+                                $connectionOptions->isInsist(),
+                                $connectionOptions->getLoginMethod(),
+                                $connectionOptions->getLoginResponse(),
+                                $connectionOptions->getLocale(),
+                                $connectionOptions->getReadTimeout(),
+                                $connectionOptions->isKeepalive(),
+                                $connectionOptions->getWriteTimeout(),
+                                $connectionOptions->getHeartbeat(),
+                                $connectionOptions->getChannelRpcTimeout()
+                            );
+                        } catch (Exception $e) {
+                            $lastException = $e;
+                        }
+                        break;
+                    case ConnectionEnum::TYPE_STREAM_SSL:
+                        try {
+                            return new $connectionClass(
+                                $node['host'], $node['port'], $node['user'], $node['password'], $node['vhost'],
+                                $connectionOptions->getSslOptions(),
+                                [
+                                    'insist'=>$connectionOptions->isInsist(),
+                                    'login_method'=>$connectionOptions->getLoginMethod(),
+                                    'login_response'=>$connectionOptions->getLoginResponse(),
+                                    'locale'=>$connectionOptions->getLocale(),
+                                    'connection_timeout'=>$connectionOptions->getConnectionTimeout(),
+                                    'read_write_timeout'=>$connectionOptions->getReadWriteTimeout(),
+                                    'keepalive'=>$connectionOptions->isKeepalive(),
+                                    'heartbeat'=>$connectionOptions->getHeartbeat(),
+                                    'channel_rpc_timeout'=>$connectionOptions->getChannelRpcTimeout()
+                                ],
+                                $connectionOptions->getSslProtocol(),
+                            );
+                        } catch (Exception $e) {
+                            $lastException = $e;
+                        }
+                        break;
+                    default:
+                        $lastException = new Exception(
+                            sprintf('Connection type [%s] is not registered', $connectionOptions->getConnectionType())
+                        );
+                        break;
+                }
+            }
+            throw $lastException ?? new Exception('Connection creation failed with unknown error.');
+        };
     }
 
     protected function getNodes(): array

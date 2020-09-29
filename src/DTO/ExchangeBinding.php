@@ -14,26 +14,17 @@ class ExchangeBinding extends Binding
      * @Assert\NotBlank()
      * @SerializedName("exchange")
      */
-    private $destination;
+    private Exchange $destination;
 
     /**
      * QueueBind constructor.
      * @param Exchange $destination
      * @param Exchange $exchange
-     * @param array|string $routingKey
-     * @param bool $nowait
-     * @param array|null $arguments
-     * @param int|null $ticket
-     * @param bool $declare
-     * @param bool $temporary
      */
-    public function __construct(
-        Exchange $destination, Exchange $exchange, $routingKey='',
-        bool $nowait=false, ?array $arguments=[], ?int $ticket=null, bool $declare=true, bool $temporary=false
-    )
+    public function __construct(Exchange $destination, Exchange $exchange)
     {
         $this->destination = $destination;
-        parent::__construct($exchange, $routingKey, $nowait, $arguments, $ticket, $declare, $temporary);
+        parent::__construct($exchange);
     }
 
     /**

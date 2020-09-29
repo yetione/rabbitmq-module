@@ -37,7 +37,7 @@ interface ConnectionInterface
 
     public function open(): ConnectionInterface;
 
-    public function reconnect(): ConnectionInterface;
+    public function reconnect(int $waitBeforeConnect=0): ConnectionInterface;
 
     public function declareExchange(Exchange $exchange, bool $forceDeclare=false): bool;
 
@@ -59,8 +59,10 @@ interface ConnectionInterface
 
     public function declareQosOptions(QosOptions $qosOptions): bool;
 
-    public function getWaitBeforeReconnect(): int;
+    public function registerHeartbeat(): bool;
 
-    public function setWaitBeforeReconnect(int $waitBeforeReconnect): ConnectionInterface;
+    public function unregisterHeartbeat(): bool;
+
+    public function isHeartbeatRegister(): bool;
 
 }

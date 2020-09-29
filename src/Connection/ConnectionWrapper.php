@@ -7,16 +7,22 @@ namespace Yetione\RabbitMQ\Connection;
 use Exception;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AbstractConnection;
+use PhpAmqpLib\Connection\Heartbeat\PCNTLHeartbeatSender;
 use PhpAmqpLib\Exception\AMQPTimeoutException;
+use PhpAmqpLib\Wire\AMQPTable;
 use Throwable;
 use Yetione\RabbitMQ\DTO\ExchangeBinding;
 use Yetione\RabbitMQ\DTO\Exchange;
 use Yetione\RabbitMQ\DTO\QosOptions;
 use Yetione\RabbitMQ\DTO\Queue;
 use Yetione\RabbitMQ\DTO\QueueBinding;
+use Yetione\RabbitMQ\Logger\Loggable;
+use Yetione\RabbitMQ\Logger\WithLogger;
 
-class ConnectionWrapper implements ConnectionInterface
+class ConnectionWrapper implements ConnectionInterface, Loggable
 {
+    use WithLogger;
+
     protected AbstractConnection $connection;
 
     protected ?AMQPChannel $channel;
@@ -29,21 +35,22 @@ class ConnectionWrapper implements ConnectionInterface
 
     protected array $declaredExchangeBindings = [];
 
-    /**
-     * Пауза в пол секунды перед реконнектом
-     * Microseconds (1/1000000 of sec) before reconnect
-     * @var int
-     */
-    protected int $waitBeforeReconnect = 10000;
+    protected ?PCNTLHeartbeatSender $heartbeatSender = null;
 
     public function __construct(AbstractConnection $connection)
     {
+        $this->setupConnection($connection);
+    }
+
+    protected function setupConnection(AbstractConnection $connection)
+    {
         $this->setConnection($connection);
+        $this->registerHeartbeat();
     }
 
     public function getChannel(bool $createNew=false): AMQPChannel
     {
-        if (null === $this->channel || $createNew) {
+        if (!isset($this->channel) || $createNew) {
             $this->setChannel($this->closeChannel()->createChannel());
         }
         return $this->channel;
@@ -56,25 +63,17 @@ class ConnectionWrapper implements ConnectionInterface
     }
 
     /**
-     * @return bool
-     */
-    public function isChannelOpen(): bool
-    {
-        return null !== $this->channel && $this->getChannel()->is_open();
-    }
-
-    /**
      * @return ConnectionWrapper
      */
     public function closeChannel(): self
     {
-        if (null !== $this->channel) {
+        if ($this->isChannelOpen()) {
             try {
-                $this->channel->close();
+                $this->getChannel()->close();
             } catch (Exception | Throwable $e) {
-                // TODO: Log
+                $this->getLogger()->error($e->getMessage());
             }
-            $this->channel = null;
+            unset($this->channel);
         }
         return $this;
     }
@@ -86,6 +85,39 @@ class ConnectionWrapper implements ConnectionInterface
     public function createChannel(int $channelId=null): AMQPChannel
     {
         return $this->getConnection()->channel($channelId);
+    }
+
+    /**
+     * @return bool
+     */
+    public function isChannelOpen(): bool
+    {
+        return isset($this->channel) && $this->getChannel()->is_open();
+    }
+
+    public function registerHeartbeat(): bool
+    {
+        if (!$this->isHeartbeatRegister() && 0 < $this->getConnection()->getHeartbeat()) {
+            $this->setHeartbeatSender(new PCNTLHeartbeatSender($this->getConnection()));
+            $this->getHeartbeatSender()->register();
+            return true;
+        }
+        return false;
+    }
+
+    public function unregisterHeartbeat(): bool
+    {
+        if ($this->isHeartbeatRegister()) {
+            $this->getHeartbeatSender()->unregister();
+            $this->setHeartbeatSender(null);
+            return true;
+        }
+        return false;
+    }
+
+    public function isHeartbeatRegister(): bool
+    {
+        return isset($this->heartbeatSender) && null !== $this->heartbeatSender;
     }
 
     /**
@@ -117,7 +149,7 @@ class ConnectionWrapper implements ConnectionInterface
             try {
                 $this->getConnection()->close();
             } catch (Exception $e) {
-                // TODO: Log
+                $this->getLogger()->error($e->getMessage());
             }
         }
         return $this;
@@ -125,9 +157,8 @@ class ConnectionWrapper implements ConnectionInterface
 
     public function close(): self
     {
-        if ($this->isChannelOpen()) {
-            $this->closeChannel();
-        }
+        $this->closeChannel();
+        $this->unregisterHeartbeat();
         $this->closeConnection();
         $this->resetDeclaredData();
         return $this;
@@ -137,6 +168,7 @@ class ConnectionWrapper implements ConnectionInterface
     {
         if (!$this->isConnectionOpen()) {
             $this->getConnection()->reconnect();
+            $this->registerHeartbeat();
             if (!$this->isChannelOpen()) {
                 $this->setChannel($this->createChannel());
             }
@@ -144,15 +176,13 @@ class ConnectionWrapper implements ConnectionInterface
         return $this;
     }
 
-    public function reconnect(): self
+    public function reconnect(int $waitBeforeConnect=0): self
     {
-        $this->closeChannel();
-        $this->resetDeclaredData();
-        if ($this->getWaitBeforeReconnect() > 0) {
-            usleep($this->getWaitBeforeReconnect());
+        $this->close();
+        if (0 < $waitBeforeConnect) {
+            usleep($waitBeforeConnect);
         }
-        $this->getConnection()->reconnect();
-        $this->setChannel($this->createChannel());
+        $this->open();
         return $this;
     }
 
@@ -179,7 +209,7 @@ class ConnectionWrapper implements ConnectionInterface
                 $this->declaredExchanges[$exchange->getName()] = true;
                 return true;
             } catch (AMQPTimeoutException $e) {
-                //TODO: Log
+                $this->getLogger()->error($e->getMessage());
             }
         }
         return false;
@@ -189,7 +219,7 @@ class ConnectionWrapper implements ConnectionInterface
     {
         if (($queue->isDeclare() && !isset($this->declaredQueues[$queue->getName()])) || $forceDeclare) {
             try {
-                list($sQueueName, $iMessageCount, $iConsumersCount) = $this->getChannel()->queue_declare(
+                list($sQueueName,,) = $this->getChannel()->queue_declare(
                     $queue->getName(),
                     $queue->isPassive(),
                     $queue->isDurable(),
@@ -205,7 +235,7 @@ class ConnectionWrapper implements ConnectionInterface
                 $this->declaredQueues[$queue->getName()] = true;
                 return true;
             } catch (AMQPTimeoutException $e) {
-                // TODO: log
+                $this->getLogger()->error($e->getMessage());
             }
         }
         return false;
@@ -217,6 +247,7 @@ class ConnectionWrapper implements ConnectionInterface
             $aRoutingKey = !is_array($binding->getRoutingKey()) ?
                 [$binding->getRoutingKey()] :
                 $binding->getRoutingKey();
+            $arguments = !empty($binding->getArguments()) ? new AMQPTable($binding->getArguments()) : [];
             foreach ($aRoutingKey as $sRoutingKey) {
                 try {
                     $this->getChannel()->queue_bind(
@@ -224,11 +255,11 @@ class ConnectionWrapper implements ConnectionInterface
                         $binding->getExchange()->getName(),
                         $sRoutingKey,
                         $binding->isNowait(),
-                        $binding->getArguments(),
+                        $arguments,
                         $binding->getTicket()
                     );
                 } catch (AMQPTimeoutException $e) {
-                    // TODO: Log
+                    $this->getLogger()->error($e->getMessage());
                     return false;
                 }
             }
@@ -244,6 +275,7 @@ class ConnectionWrapper implements ConnectionInterface
             $aRoutingKey = !is_array($binding->getRoutingKey()) ?
                 [$binding->getRoutingKey()] :
                 $binding->getRoutingKey();
+            $arguments = !empty($binding->getArguments()) ? new AMQPTable($binding->getArguments()) : [];
             foreach ($aRoutingKey as $sRoutingKey) {
                 try {
                     $this->getChannel()->exchange_bind(
@@ -251,15 +283,15 @@ class ConnectionWrapper implements ConnectionInterface
                         $binding->getExchange()->getName(),
                         $sRoutingKey,
                         $binding->isNowait(),
-                        $binding->getArguments(),
+                        $arguments,
                         $binding->getTicket()
                     );
                 } catch (AMQPTimeoutException $e) {
-                    // TODO: Log
+                    $this->getLogger()->error($e->getMessage());
                     return false;
                 }
             }
-
+            return true;
         }
         return false;
     }
@@ -270,7 +302,7 @@ class ConnectionWrapper implements ConnectionInterface
             $this->getChannel()->queue_purge($queue->getName(), $noWait, $queue->getTicket());
             return true;
         } catch (AMQPTimeoutException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             return false;
         }
     }
@@ -287,7 +319,7 @@ class ConnectionWrapper implements ConnectionInterface
             );
             return true;
         } catch (AMQPTimeoutException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             return false;
         }
     }
@@ -303,7 +335,7 @@ class ConnectionWrapper implements ConnectionInterface
             );
             return true;
         } catch (AMQPTimeoutException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             return false;
         }
     }
@@ -326,7 +358,7 @@ class ConnectionWrapper implements ConnectionInterface
             }
             return true;
         } catch (AMQPTimeoutException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             return false;
         }
     }
@@ -348,7 +380,7 @@ class ConnectionWrapper implements ConnectionInterface
             }
             return true;
         } catch (AMQPTimeoutException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             return false;
         }
     }
@@ -363,7 +395,7 @@ class ConnectionWrapper implements ConnectionInterface
             );
             return true;
         } catch (AMQPTimeoutException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
         }
         return false;
     }
@@ -377,20 +409,20 @@ class ConnectionWrapper implements ConnectionInterface
     }
 
     /**
-     * @return int
+     * @return PCNTLHeartbeatSender|null
      */
-    public function getWaitBeforeReconnect(): int
+    public function getHeartbeatSender(): ?PCNTLHeartbeatSender
     {
-        return $this->waitBeforeReconnect;
+        return $this->heartbeatSender;
     }
 
     /**
-     * @param int $waitBeforeReconnect
-     * @return ConnectionInterface
+     * @param PCNTLHeartbeatSender|null $heartbeatSender
+     * @return ConnectionWrapper
      */
-    public function setWaitBeforeReconnect(int $waitBeforeReconnect): ConnectionInterface
+    public function setHeartbeatSender(?PCNTLHeartbeatSender $heartbeatSender): ConnectionWrapper
     {
-        $this->waitBeforeReconnect = $waitBeforeReconnect;
+        $this->heartbeatSender = $heartbeatSender;
         return $this;
     }
 }

@@ -6,13 +6,23 @@ namespace Yetione\RabbitMQ\Service;
 use Throwable;
 use Exception;
 use Yetione\RabbitMQ\Consumer\AbstractConsumer;
+use Yetione\RabbitMQ\Logger\Loggable;
+use Yetione\RabbitMQ\Logger\LoggerProviderInterface;
+use Yetione\RabbitMQ\Logger\WithLogger;
 
-class RabbitMQService
+class RabbitMQService implements Loggable
 {
+    use WithLogger;
+
     /**
      * @var int
      */
     protected int $consumerErrorStatusCode = 3;
+
+    public function __construct(LoggerProviderInterface $loggerProvider)
+    {
+        $this->setLoggerProvider($loggerProvider);
+    }
 
     /**
      * @param AbstractConsumer $consumer
@@ -32,7 +42,7 @@ class RabbitMQService
         try {
             $iExitCode = $consumer->start();
         } catch (Exception | Throwable $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             $iExitCode = $this->getConsumerErrorStatusCode();
         }
         return $iExitCode;

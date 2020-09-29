@@ -15,28 +15,28 @@ class Node implements DTOInterface
      * @Assert\NotBlank()
      * @SerializedName("host")
      */
-    private $host;
+    private string $host;
 
     /**
      * @var int
      * @Assert\Type(type="int")
      */
-    private $port;
+    private int $port;
 
     /**
-     * @var Credentials|null
-     * @Assert\Type(type={"\Yetione\RabbitMQ\DTO\Credentials", "null"})
+     * @var Credentials
+     * @Assert\Type(type="\Yetione\RabbitMQ\DTO\Credentials")
      * @SerializedName("credentials")
      */
-    private $credential;
+    private Credentials $credential;
 
     /**
      * Node constructor.
      * @param string $host
      * @param int $port
-     * @param Credentials|null $credential
+     * @param Credentials $credential
      */
-    public function __construct(string $host, int $port, ?Credentials $credential = null)
+    public function __construct(string $host, int $port, Credentials $credential)
     {
         $this->host = $host;
         $this->port = $port;

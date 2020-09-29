@@ -30,16 +30,16 @@ abstract class SingleProducer extends AbstractProducer
             $this->channel()
                 ->basic_publish($message, $oExchange->getName(), $routingKey, $mandatory, $immediate, $ticket);
         } catch (AMQPConnectionClosedException | AMQPChannelClosedException $e) {
-            // TODO: Log
+            $this->getLogger()->error($e->getMessage());
             $this->maybeReconnect();
             if ($this->isNeedRetry()) {
                 return $this->publish($message, $routingKey, $mandatory, $immediate, $ticket);
             }
-            $this->onPublishError($message, $e);
+            $this->afterPublish($message, $e);
             return $this;
         } catch (AMQPConnectionBlockedException $e) {
-            // TODO: Log
-            $this->onPublishError($message, $e);
+            $this->getLogger()->error($e->getMessage());
+            $this->afterPublish($message, $e);
             return $this;
         }
         $this->afterPublish($message);
@@ -48,8 +48,8 @@ abstract class SingleProducer extends AbstractProducer
 
     public function getMessageFactory(): MessageFactoryInterface
     {
-        if (null === $this->messageFactory) {
-            $this->messageFactory = new ReusableMessageFactory();
+        if (!isset($this->messageFactory)) {
+            $this->setMessageFactory(new ReusableMessageFactory());
         }
         return parent::getMessageFactory();
     }

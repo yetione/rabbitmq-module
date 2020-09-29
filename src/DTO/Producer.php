@@ -6,6 +6,14 @@ namespace Yetione\RabbitMQ\DTO;
 use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Class Producer
+ * @package Yetione\RabbitMQ\DTO
+ *
+ * @property  string $exchange
+ * @property string $type
+ * @property int $publishRetries
+ */
 class Producer extends Connectable
 {
 
@@ -14,19 +22,30 @@ class Producer extends Connectable
      * @Assert\Type(type="string")
      * @SerializedName("type")
      */
-    private string $type;
+    protected string $type;
 
     /**
      * @var string
      * @Assert\Type(type="string")
      * @SerializedName("exchange")
      */
-    private string $exchange;
+    protected string $exchange;
+
+    /**
+     * Кол-во попыток повторной отправки сообщения.
+     *
+     * @var int
+     * @Assert\Type(type="int")
+     * @Assert\GreaterThanOrEqual(0)
+     * @SerializedName("publish_retries")
+     */
+    protected int $publishRetries = 0;
 
     public function __construct(string $type, string $exchange, string $connection)
     {
         parent::__construct($connection);
-        $this->setType($type)->setExchange($exchange);
+        $this->type = $type;
+        $this->exchange = $exchange;
     }
 
     /**
@@ -38,16 +57,6 @@ class Producer extends Connectable
     }
 
     /**
-     * @param string $type
-     * @return Producer
-     */
-    public function setType(string $type): Producer
-    {
-        $this->type = $type;
-        return $this;
-    }
-
-    /**
      * @return string
      */
     public function getExchange(): string
@@ -56,12 +65,10 @@ class Producer extends Connectable
     }
 
     /**
-     * @param string $exchange
-     * @return Producer
+     * @return int
      */
-    public function setExchange(string $exchange): Producer
+    public function getPublishRetries(): int
     {
-        $this->exchange = $exchange;
-        return $this;
+        return $this->publishRetries;
     }
 }

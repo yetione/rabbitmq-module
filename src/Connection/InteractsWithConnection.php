@@ -5,34 +5,32 @@ namespace Yetione\RabbitMQ\Connection;
 
 
 use PhpAmqpLib\Channel\AMQPChannel;
+use Yetione\RabbitMQ\DTO\Connectable;
 
+/**
+ * Trait InteractsWithConnection
+ * @package Yetione\RabbitMQ\Connection
+ *
+ * @property Connectable $options
+ */
 trait InteractsWithConnection
 {
     protected ConnectionInterface $connectionWrapper;
 
-    protected bool $autoReconnect = true;
-
-    protected int $reconnectRetries = 5;
-
-    /**
-     * Ждем пол секунды перед реконнектом
-     * @var int
-     */
-    protected int $waitBeforeReconnect = 500000;
-
-    protected function maybeReconnect(): void
+    protected function maybeReconnect(): self
     {
-        if ($this->isAutoReconnect()) {
-            $tries = 0;
-            while ($tries < $this->reconnectRetries && !$this->isConnected()) {
-                $this->reconnect();
-                if (0 < $this->getWaitBeforeReconnect()) {
-                    usleep($this->getWaitBeforeReconnect());
+        if ($this->options->isAutoReconnect() && !$this->isConnected()) {
+            for ($i=0;$i<$this->options->getReconnectRetries();++$i) {
+                $this->getConnectionWrapper()->reconnect($this->options->getReconnectDelay());
+                if (0 < $this->options->getReconnectInterval()) {
+                    usleep($this->options->getReconnectInterval());
                 }
-                $tries++;
+                if ($this->isConnected()) {
+                    break;
+                }
             }
         }
-        return;
+        return $this;
     }
 
     public function connection(): ConnectionInterface
@@ -40,28 +38,9 @@ trait InteractsWithConnection
         return $this->getConnectionWrapper();
     }
 
-    protected function reconnect(): self
-    {
-        $this->connection()->reconnect();
-        return $this;
-    }
-
     protected function close(): self
     {
-        return $this->closeChannel()->closeConnection();
-    }
-
-    protected function closeChannel(): self
-    {
-        if ($this->getConnectionWrapper()->isChannelOpen()) {
-            $this->getConnectionWrapper()->closeChannel();
-        }
-        return $this;
-    }
-
-    protected function closeConnection(): self
-    {
-        if ($this->getConnectionWrapper()->isConnectionOpen()) {
+        if (isset($this->connectionWrapper)) {
             $this->getConnectionWrapper()->close();
         }
         return $this;
@@ -86,28 +65,6 @@ trait InteractsWithConnection
     public function setConnectionWrapper(ConnectionInterface $connectionWrapper): self
     {
         $this->connectionWrapper = $connectionWrapper;
-        return $this;
-    }
-
-    public function isAutoReconnect(): bool
-    {
-        return $this->autoReconnect;
-    }
-
-    public function setAutoReconnect(bool $autoReconnect): self
-    {
-        $this->autoReconnect = $autoReconnect;
-        return $this;
-    }
-
-    public function getWaitBeforeReconnect(): int
-    {
-        return $this->waitBeforeReconnect;
-    }
-
-    public function setWaitBeforeReconnect(int $waitBeforeReconnect): self
-    {
-        $this->waitBeforeReconnect = $waitBeforeReconnect;
         return $this;
     }
 }
