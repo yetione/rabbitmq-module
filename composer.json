@@ -11,22 +11,13 @@
     ],
     "minimum-stability": "stable",
     "require": {
-        "yetione/dtoable": "@dev",
+        "yetione/dtoable": "^1.4.1",
         "php-amqplib/php-amqplib": "^2.12",
-        "yetione/php-json": "^1",
+        "yetione/php-json": "^1.2.1",
         "illuminate/support": "^7",
         "psr/log": "^1.1"
     },
     "autoload": {
         "psr-4": { "Yetione\\RabbitMQ\\": "src/"}
-    },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../dtoable",
-            "options": {
-                "symlink": false
-            }
-        }
-    ]
+    }
 }
